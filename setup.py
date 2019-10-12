@@ -5,7 +5,7 @@ with open("README.md", "r") as readme:
 
 setuptools.setup(
     name="ezntfs",
-    version="0.1",
+    version="0.1.1",
     author="Matt",
     author_email="undecidabot@gmail.com",
     description="An easy-to-use wrapper for ntfs-3g on macOS",
