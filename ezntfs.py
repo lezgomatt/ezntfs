@@ -63,7 +63,7 @@ def run_checks():
         sys.exit("ERROR: Could not find ntfs-3g.")
 
     if not os.geteuid() == 0:
-        sys.exit("ERROR: Need root privilages to mount via ntfs-3g.")
+        sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
 
 
 def get_ntfs_volumes():
