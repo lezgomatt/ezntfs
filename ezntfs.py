@@ -67,12 +67,17 @@ def run_checks():
 
 
 def get_ntfs_volumes():
+    # NOTE: A "Windows_NTFS" partition type might actually be using the exFAT file system.
+    # The types listed by `diskutil list` refer to the partition type not the file system.
+    # "Windows_NTFS" is used for MBR partition tables and "Microsoft Basic Data" for GPT.
+    # To determine the actual file system used, we use `diskutil info` later on.
+
     list_out = subprocess.run(["diskutil", "list"], capture_output=True, check=True).stdout.decode()
 
     disk_ids = [
         re.search(r"\S+$", line)[0]
         for line in list_out.split("\n")
-        if re.match(r"^\s*\d+:\s*Windows_NTFS ", line)
+        if re.match(r"^\s*\d+:\s*(Windows_NTFS|Microsoft Basic Data) ", line)
     ]
 
     volumes = {}
