@@ -93,23 +93,17 @@ def get_ntfs_volumes():
         if (
             info["Type (Bundle)"] == "ntfs"
             and info["File System Personality"] == "NTFS"
-            and ( info.get("Read-Only Media", "") == "No" or info.get("Media Read-Only", "") == "No" )
+            # Older versions of diskutil used the label "Read-Only Media"
+            and (info.get("Media Read-Only") or info.get("Read-Only Media")) == "No"
         ):
-            is_volume_read_only = True
-            if info.get("Read-Only Volume", None) and info.get("Read-Only Volume") == "Yes":
-                is_volume_read_only = True
-            elif info.get("Volume Read-Only", None) and info.get("Volume Read-Only") == "Yes":
-                is_volume_read_only = True
-            else:
-                is_volume_read_only = False
-
             volumes[id] = Volume(
                 id=id,
                 node=info["Device Node"],
                 name=info["Volume Name"] if info["Volume Name"] != "" else "Untitled",
                 mounted=info["Mounted"] == "Yes",
                 size=re.match(r"\d+(\.\d+)? \S+", info["Disk Size"])[0],
-                read_only=is_volume_read_only,
+                # Older versions of diskutil used the label "Read-Only Volume"
+                read_only=(info.get("Volume Read-Only") or info.get("Read-Only Volume")).startswith("Yes"),
             )
 
     return volumes
