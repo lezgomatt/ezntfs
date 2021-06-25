@@ -17,18 +17,42 @@ class AppDelegate(NSObject):
         menuItem = (
             NSMenuItem
                 .alloc()
+                .initWithTitle_action_keyEquivalent_("Writable Drive", "mount:", "")
+        )
+        menuItem.setState_(NSControlStateValueOn)
+        menuItem.setEnabled_(False)
+        menu.addItem_(menuItem)
+
+        menuItem = (
+            NSMenuItem
+                .alloc()
+                .initWithTitle_action_keyEquivalent_("Read-only Drive", "mount:", "")
+        )
+        menuItem.setState_(NSControlStateValueOff)
+        menuItem.setEnabled_(True)
+        menu.addItem_(menuItem)
+
+        menu.addItem_(NSMenuItem.separatorItem())
+
+        menuItem = (
+            NSMenuItem
+                .alloc()
                 .initWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
         )
         menu.addItem_(menuItem)
 
         self.statusItem.setMenu_(menu)
 
-    def onMount_(self, notif):
+    def mount_(self, menuItem):
         NSLog("Mount.")
+        print(menuItem)
+
+    def onMount_(self, notif):
+        NSLog("OnMount.")
         print(notif.userInfo())
 
     def onUnmount_(self, notif):
-        NSLog("Unmount.")
+        NSLog("OnUnmount.")
         print(notif.userInfo())
 
 def main():
