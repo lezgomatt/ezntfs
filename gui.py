@@ -4,6 +4,8 @@ from Foundation import *
 from AppKit import *
 from PyObjCTools import AppHelper
 
+import ezntfs
+
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
         NSLog("Launched.")
@@ -11,37 +13,31 @@ class AppDelegate(NSObject):
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
         self.statusItem.button().setTitle_("ezNTFS")
 
+        self.statusItem.setMenu_(self.build_menu())
+
+    def build_menu(self):
         menu = NSMenu.new()
         menu.setAutoenablesItems_(False)
 
-        menuItem = (
-            NSMenuItem
-                .alloc()
-                .initWithTitle_action_keyEquivalent_("Writable Drive", "mount:", "")
-        )
-        menuItem.setState_(NSControlStateValueOn)
-        menuItem.setEnabled_(False)
-        menu.addItem_(menuItem)
+        volumes = ezntfs.get_ntfs_volumes().values()
+        print(volumes)
 
-        menuItem = (
-            NSMenuItem
-                .alloc()
-                .initWithTitle_action_keyEquivalent_("Read-only Drive", "mount:", "")
-        )
-        menuItem.setState_(NSControlStateValueOff)
-        menuItem.setEnabled_(True)
-        menu.addItem_(menuItem)
+        if len(volumes) == 0:
+            label = "No NTFS volumes found."
+            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
+            menuItem.setEnabled_(False)
+
+        for volume in volumes:
+            label = f"{volume.id}: {volume.name} [{volume.size}]"
+            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mount:", "")
+            if not volume.read_only:
+                menuItem.setState_(NSControlStateValueOn)
+                menuItem.setEnabled_(False)
 
         menu.addItem_(NSMenuItem.separatorItem())
+        menuItem = menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        menuItem = (
-            NSMenuItem
-                .alloc()
-                .initWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
-        )
-        menu.addItem_(menuItem)
-
-        self.statusItem.setMenu_(menu)
+        return menu
 
     def mount_(self, menuItem):
         NSLog("Mount.")
@@ -49,11 +45,11 @@ class AppDelegate(NSObject):
 
     def onMount_(self, notif):
         NSLog("OnMount.")
-        print(notif.userInfo())
+        self.statusItem.setMenu_(self.build_menu())
 
     def onUnmount_(self, notif):
         NSLog("OnUnmount.")
-        print(notif.userInfo())
+        self.statusItem.setMenu_(self.build_menu())
 
 def main():
     workspace = NSWorkspace.sharedWorkspace()
