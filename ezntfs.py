@@ -16,7 +16,7 @@ Commands:
   <disk id>    Mount a specific NTFS volume via ntfs-3g
 """
 
-Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "read_only"])
+Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "read_only", "internal"])
 
 def cli(command):
     volumes = get_ntfs_volumes()
@@ -104,6 +104,7 @@ def get_ntfs_volumes():
                 size=re.match(r"\d+(\.\d+)? \S+", info["Disk Size"])[0],
                 # Older versions of diskutil used the label "Read-Only Volume"
                 read_only=(info.get("Volume Read-Only") or info.get("Read-Only Volume")).startswith("Yes"),
+                internal=info.get("Device Location") == "Internal"
             )
 
     return volumes
