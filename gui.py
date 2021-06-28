@@ -39,16 +39,8 @@ class AppDelegate(NSObject):
 
         return menu
 
-    def mount_(self, menuItem):
-        NSLog("Mount.")
-        print(menuItem)
-
-    def onMount_(self, notif):
-        NSLog("OnMount.")
-        self.statusItem.setMenu_(self.build_menu())
-
-    def onUnmount_(self, notif):
-        NSLog("OnUnmount.")
+    def volumeChanged_(self, notif):
+        NSLog("Volume changed.")
         self.statusItem.setMenu_(self.build_menu())
 
 def main():
@@ -61,8 +53,9 @@ def main():
 
     app.setActivationPolicy_(NSApplicationActivationPolicyProhibited)
 
-    notification_center.addObserver_selector_name_object_(delegate, 'onMount:', NSWorkspaceDidMountNotification, None)
-    notification_center.addObserver_selector_name_object_(delegate, 'onUnmount:', NSWorkspaceDidUnmountNotification, None)
+    notification_center.addObserver_selector_name_object_(delegate, 'volumeChanged:', NSWorkspaceDidMountNotification, None)
+    notification_center.addObserver_selector_name_object_(delegate, 'volumeChanged:', NSWorkspaceDidUnmountNotification, None)
+    notification_center.addObserver_selector_name_object_(delegate, 'volumeChanged:', NSWorkspaceDidRenameVolumeNotification, None)
 
     AppHelper.runEventLoop()
 
