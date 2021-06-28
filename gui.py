@@ -39,7 +39,7 @@ class AppDelegate(NSObject):
 
         return menu
 
-    def volumeChanged_(self, notif):
+    def volumeDidChange_(self, notification):
         NSLog("Volume changed.")
         self.statusItem.setMenu_(self.build_menu())
 
@@ -53,9 +53,9 @@ def main():
 
     app.setActivationPolicy_(NSApplicationActivationPolicyProhibited)
 
-    notification_center.addObserver_selector_name_object_(delegate, 'volumeChanged:', NSWorkspaceDidMountNotification, None)
-    notification_center.addObserver_selector_name_object_(delegate, 'volumeChanged:', NSWorkspaceDidUnmountNotification, None)
-    notification_center.addObserver_selector_name_object_(delegate, 'volumeChanged:', NSWorkspaceDidRenameVolumeNotification, None)
+    notification_center.addObserver_selector_name_object_(delegate, 'volumeDidChange:', NSWorkspaceDidMountNotification, None)
+    notification_center.addObserver_selector_name_object_(delegate, 'volumeDidChange:', NSWorkspaceDidUnmountNotification, None)
+    notification_center.addObserver_selector_name_object_(delegate, 'volumeDidChange:', NSWorkspaceDidRenameVolumeNotification, None)
 
     AppHelper.runEventLoop()
 
