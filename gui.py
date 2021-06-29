@@ -13,7 +13,7 @@ class AppDelegate(NSObject):
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
         self.statusItem.button().setTitle_("ezNTFS")
 
-        self.statusItem.setMenu_(self.build_menu())
+        self.build_menu()
 
     def build_menu(self):
         menu = NSMenu.new()
@@ -37,11 +37,12 @@ class AppDelegate(NSObject):
         menu.addItem_(NSMenuItem.separatorItem())
         menuItem = menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        return menu
+        self.statusItem.setMenu_(menu)
+        self.statusItem.setVisible_(len(volumes) > 0)
 
     def volumeDidChange_(self, notification):
         NSLog("Volume changed.")
-        self.statusItem.setMenu_(self.build_menu())
+        self.build_menu()
 
 def main():
     workspace = NSWorkspace.sharedWorkspace()
