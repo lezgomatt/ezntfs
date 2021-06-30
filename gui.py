@@ -4,6 +4,8 @@ from Foundation import *
 from AppKit import *
 from PyObjCTools import AppHelper
 
+import subprocess
+
 import ezntfs
 
 class AppDelegate(NSObject):
@@ -13,6 +15,10 @@ class AppDelegate(NSObject):
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
         self.statusItem.button().setTitle_("ezNTFS")
 
+        self.build_menu()
+
+    def volumeDidChange_(self, notification):
+        NSLog("Volume changed.")
         self.build_menu()
 
     def build_menu(self):
@@ -29,7 +35,7 @@ class AppDelegate(NSObject):
 
         for volume in volumes:
             label = f"{volume.id}: {volume.name} [{volume.size}]"
-            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mount:", "")
+            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
             if not volume.read_only:
                 menuItem.setState_(NSControlStateValueOn)
                 menuItem.setEnabled_(False)
@@ -40,9 +46,20 @@ class AppDelegate(NSObject):
         self.statusItem.setMenu_(menu)
         self.statusItem.setVisible_(len(volumes) > 0)
 
-    def volumeDidChange_(self, notification):
-        NSLog("Volume changed.")
-        self.build_menu()
+    def mountVolume_(self, menuItem):
+        [volume_id, volume_name] = menuItem.title().split(": ", 1)
+
+        # TODO: replace with the actual mount command
+        command = f"ezntfs list"
+        prompt_text = f'Mounting NTFS volume \\"{volume_name}\\" with ntfs-3g.'
+        script = f'do shell script "{command}" with prompt "{prompt_text}" with administrator privileges'
+
+        try:
+            out = subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+            print("ok")
+            print(out.stdout)
+        except:
+            print("fail")
 
 def main():
     workspace = NSWorkspace.sharedWorkspace()
