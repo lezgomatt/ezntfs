@@ -49,15 +49,9 @@ class AppDelegate(NSObject):
     def mountVolume_(self, menuItem):
         [volume_id, volume_name] = menuItem.title().split(": ", 1)
 
-        # TODO: replace with the actual mount command
-        command = f"ezntfs list"
-        prompt_text = f'Mounting NTFS volume \\"{volume_name}\\" with ntfs-3g.'
-        script = f'do shell script "{command}" with prompt "{prompt_text}" with administrator privileges'
-
         try:
-            out = subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+            subprocess.run(["sudo", "ezntfs", volume_id], check=True)
             print("ok")
-            print(out.stdout)
         except:
             print("fail")
 
