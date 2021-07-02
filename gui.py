@@ -49,6 +49,9 @@ class AppDelegate(NSObject):
     def mountVolume_(self, menuItem):
         [volume_id, volume_name] = menuItem.title().split(": ", 1)
 
+        self.performSelectorInBackground_withObject_(self.runMountCommand_, volume_id)
+
+    def runMountCommand_(self, volume_id):
         try:
             subprocess.run(["sudo", "ezntfs", volume_id], check=True)
             print("ok")
