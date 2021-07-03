@@ -53,7 +53,8 @@ class AppDelegate(NSObject):
 
     def runMountCommand_(self, volume_id):
         try:
-            subprocess.run(["sudo", "ezntfs", volume_id], check=True)
+            # assumes ezntfs has NOPASSWD set in sudoers
+            subprocess.run(["sudo", "--non-interactive", "ezntfs", volume_id], check=True)
             print("ok")
         except:
             print("fail")
