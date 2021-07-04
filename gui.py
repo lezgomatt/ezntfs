@@ -13,7 +13,9 @@ class AppDelegate(NSObject):
         NSLog("Launched.")
 
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
+
         self.statusItem.button().setTitle_("ezNTFS")
+        self.statusItem.button().setImage_(NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS"))
 
         self.build_menu()
 
