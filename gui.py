@@ -38,6 +38,7 @@ class AppDelegate(NSObject):
         for volume in volumes:
             label = f"{volume.id}: {volume.name} [{volume.size}]"
             menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
+            menuItem.setRepresentedObject_(volume.id)
             if not volume.read_only:
                 menuItem.setState_(NSControlStateValueOn)
                 menuItem.setEnabled_(False)
@@ -49,7 +50,7 @@ class AppDelegate(NSObject):
         self.statusItem.setVisible_(len(volumes) > 0)
 
     def mountVolume_(self, menuItem):
-        [volume_id, volume_name] = menuItem.title().split(": ", 1)
+        volume_id = menuItem.representedObject()
 
         self.performSelectorInBackground_withObject_(self.runMountCommand_, volume_id)
 
