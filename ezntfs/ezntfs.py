@@ -1,69 +1,10 @@
-#!/usr/bin/env python3
-
 from collections import namedtuple
 import os
 import re
-import shutil
 import subprocess
-import sys
 
-
-usage = f"""Usage: ezntfs <command>
-
-Commands:
-  list         List all NTFS volumes available for mounting
-  all          Mount all NTFS volumes via ntfs-3g
-  <disk id>    Mount a specific NTFS volume via ntfs-3g
-"""
 
 Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "read_only", "internal"])
-
-def cli(command):
-    volumes = get_ntfs_volumes()
-
-    if command == "list":
-        if len(volumes) == 0:
-            print("No NTFS volumes found.")
-
-        for id, volume in volumes.items():
-            name = f"{id}: {volume.name} [{volume.size}]"
-            details = (
-                "mounted: " + ("yes" if volume.mounted else "no")
-                + (" (read-only)" if volume.read_only else "")
-            )
-
-            print(f"{name} -- {details}")
-
-        sys.exit(0)
-
-    if command == "all":
-        run_checks()
-        print(f"Found {len(volumes)} NTFS volume(s).")
-
-        for id, volume in volumes.items():
-            print()
-            mount(volume)
-
-        sys.exit(0)
-
-    if command in volumes:
-        run_checks()
-        ok = mount(volumes[command])
-        sys.exit(0 if ok else 1)
-
-    print(f"ezntfs: Invalid command or disk id.")
-    print()
-    print(usage)
-
-    sys.exit(1)
-
-
-def run_checks():
-    if shutil.which("ntfs-3g") is None:
-        sys.exit("ERROR: Could not find ntfs-3g.")
-
-    if not os.geteuid() == 0:
-        sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
 
 
 def get_ntfs_volumes():
@@ -128,10 +69,10 @@ def mount(volume):
 
     if os.path.exists(path):
         counter = 1
-        while os.path.exists(path + " " + str(counter)):
+        while os.path.exists(f"{path} {counter}"):
             counter += 1
 
-        path = path + " " + str(counter)
+        path = f"{path} {counter}"
 
     user_id = os.getenv("SUDO_UID", os.getuid())
     group_id = os.getenv("SUDO_GID", os.getgid())
@@ -161,15 +102,3 @@ def mount(volume):
             subprocess.run(["diskutil", "mount", volume.id], check=True)
 
         return False
-
-
-def main():
-    if len(sys.argv) < 2:
-        print(usage)
-        sys.exit(1)
-
-    cli(sys.argv[1])
-
-
-if __name__ == "__main__":
-    main()

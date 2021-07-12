@@ -1,0 +1,25 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "ezntfs"
+author = "Matt"
+author-email = "lezgomatt@gmail.com"
+home-page = "https://github.com/lezgomatt/ezntfs"
+requires=["pyobjc"]
+requires-python=">=3.6"
+description-file = "README.md"
+classifiers=[
+    "Environment :: Console",
+    "License :: OSI Approved :: zlib/libpng License",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: System :: Filesystems",
+    "Topic :: Utilities",
+]
+
+[tool.flit.entrypoints."console_scripts"]
+ezntfs = "ezntfs.cli:main"
