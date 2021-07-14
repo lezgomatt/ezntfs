@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from Foundation import *
 from AppKit import *
 from PyObjCTools import AppHelper
@@ -7,7 +5,8 @@ from PyObjCTools import AppHelper
 from tempfile import NamedTemporaryFile
 import subprocess
 
-import ezntfs
+from . import ezntfs
+
 
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
@@ -95,6 +94,3 @@ def main():
     notification_center.addObserver_selector_name_object_(delegate, "volumeDidChange:", NSWorkspaceDidRenameVolumeNotification, None)
 
     AppHelper.runEventLoop()
-
-if __name__ == "__main__":
-    main()

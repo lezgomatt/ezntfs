@@ -23,3 +23,6 @@ classifiers=[
 
 [tool.flit.entrypoints."console_scripts"]
 ezntfs = "ezntfs.cli:main"
+
+[tool.flit.entrypoints."gui_scripts"]
+ezntfs-gui = "ezntfs.gui:main"
