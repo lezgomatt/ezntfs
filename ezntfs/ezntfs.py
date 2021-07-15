@@ -13,7 +13,7 @@ def get_ntfs_volumes():
     # "Windows_NTFS" is used for MBR partition tables and "Microsoft Basic Data" for GPT.
     # To determine the actual file system used, we use `diskutil info` later on.
 
-    list_out = subprocess.run(["diskutil", "list"], capture_output=True, check=True).stdout.decode()
+    list_out = run(["diskutil", "list"], capture_output=True)
 
     disk_ids = [
         re.search(r"\S+$", line)[0]
@@ -24,7 +24,7 @@ def get_ntfs_volumes():
     volumes = {}
 
     for id in disk_ids:
-        info_out = subprocess.run(["diskutil", "info", id], capture_output=True, check=True).stdout.decode()
+        info_out = run(["diskutil", "info", id], capture_output=True)
 
         info = {
             line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
@@ -52,32 +52,18 @@ def get_ntfs_volumes():
 
 
 def mount(volume):
-    print(f"Volume: {volume.name} [{volume.size}]")
+    cmd = build_mount_command(
+        volume,
+        user_id=os.getenv("SUDO_UID", os.getuid()),
+        group_id=os.getenv("SUDO_GID", os.getgid()),
+        path=genrate_path(volume),
+    )
 
-    if volume.mounted:
-        if not volume.read_only:
-            print(f"{volume.name} is already writable.")
-            return False
+    return run(cmd)
 
-        print("Unmounting...")
-        try:
-            subprocess.run(["diskutil", "unmount", volume.id], check=True)
-        except:
-            return False
 
-    path = f"/Volumes/{volume.name}"
-
-    if os.path.exists(path):
-        counter = 1
-        while os.path.exists(f"{path} {counter}"):
-            counter += 1
-
-        path = f"{path} {counter}"
-
-    user_id = os.getenv("SUDO_UID", os.getuid())
-    group_id = os.getenv("SUDO_GID", os.getgid())
-
-    mount_cmd = [
+def build_mount_command(volume, *, user_id, group_id, path):
+    return [
         "ntfs-3g",
         "-o", f"volname={volume.name}",
         "-o", "local",
@@ -89,16 +75,31 @@ def mount(volume):
         volume.node, path,
     ]
 
-    print(f"Mounting on `{path}` via ntfs-3g...")
-    try:
-        subprocess.run(mount_cmd, check=True)
-        print(f"Successfully mounted {volume.name}.")
-        return True
-    except:
-        print(f"Failed to mount {volume.name}.")
 
-        if volume.mounted:
-            print("Remounting via macOS...")
-            subprocess.run(["diskutil", "mount", volume.id], check=True)
+def genrate_path(volume):
+    path = f"/Volumes/{volume.name}"
+    if not os.path.exists(path):
+        return path
 
-        return False
+    counter = 1
+    while os.path.exists(f"{path} {counter}"):
+        counter += 1
+
+    return f"{path} {counter}"
+
+
+def macos_mount(volume):
+    return run(["diskutil", "mount", volume.id])
+
+
+def macos_unmount(volume):
+    return run(["diskutil", "unmount", volume.id])
+
+
+def run(command, capture_output=False):
+    if capture_output:
+        result = subprocess.run(command, capture_output=True, check=True)
+        return result.stdout.decode()
+    else:
+        result = subprocess.run(command)
+        return result.returncode == 0

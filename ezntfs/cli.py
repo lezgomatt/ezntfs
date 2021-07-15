@@ -65,4 +65,32 @@ def mount_all_volumes(volumes):
 
     for id, volume in volumes.items():
         print()
-        ezntfs.mount(volume)
+        mount_volume(volume)
+
+
+def mount_volume(volume):
+    print(f"Volume: {volume.name} [{volume.size}]")
+
+    if volume.mounted:
+        if not volume.read_only:
+            print(f"{volume.name} is already writable.")
+            return False
+
+        print("Unmounting...")
+        ok = ezntfs.macos_unmount(volume)
+        if not ok:
+            return False
+
+    print(f"Mounting via ntfs-3g...")
+    ok = ezntfs.mount(volume)
+    if ok:
+        print(f"Successfully mounted {volume.name}.")
+        return True
+    else:
+        print(f"Failed to mount {volume.name}.")
+
+        if volume.mounted:
+            print("Remounting via macOS...")
+            ezntfs.macos_mount(volume)
+
+        return False
