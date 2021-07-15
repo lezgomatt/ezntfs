@@ -25,10 +25,11 @@ def main():
     if command == "list":
         list_volumes(volumes)
     elif command == "all":
+        run_checks()
         mount_all_volumes(volumes)
     elif command in volumes:
         run_checks()
-        ok = ezntfs.mount(volumes[command])
+        ok = mount_volume(volumes[command])
         sys.exit(0 if ok else 1)
     else:
         print(f"ezntfs: Invalid command or disk id.")
@@ -60,7 +61,6 @@ def list_volumes(volumes):
 
 
 def mount_all_volumes(volumes):
-    run_checks()
     print(f"Found {len(volumes)} NTFS volume(s).")
 
     for id, volume in volumes.items():
