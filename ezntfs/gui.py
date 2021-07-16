@@ -37,7 +37,7 @@ class AppDelegate(NSObject):
             menuItem.setEnabled_(False)
 
         for volume in volumes:
-            label = f"{volume.id}: {volume.name} [{volume.size}]"
+            label = f"{volume.name} [{volume.size}]"
             menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
             menuItem.setRepresentedObject_(volume.id)
             if not volume.read_only:
