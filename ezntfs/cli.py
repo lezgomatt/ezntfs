@@ -20,7 +20,7 @@ def main():
         sys.exit(1)
 
     command = sys.argv[1]
-    volumes = ezntfs.get_ntfs_volumes()
+    volumes = ezntfs.get_all_ntfs_volumes()
 
     if command == "list":
         list_volumes(volumes)

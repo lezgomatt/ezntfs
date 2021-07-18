@@ -7,7 +7,7 @@ import subprocess
 Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "read_only", "internal"])
 
 
-def get_ntfs_volumes():
+def get_all_ntfs_volumes():
     # NOTE: A "Windows_NTFS" partition type might actually be using the exFAT file system.
     # The types listed by `diskutil list` refer to the partition type not the file system.
     # "Windows_NTFS" is used for MBR partition tables and "Microsoft Basic Data" for GPT.
@@ -21,34 +21,35 @@ def get_ntfs_volumes():
         if re.match(r"^\s*\d+:\s*(Windows_NTFS|Microsoft Basic Data) ", line)
     ]
 
-    volumes = {}
+    return { vol.id: vol for vol in map(get_ntfs_volume, disk_ids) if vol is not None }
 
-    for id in disk_ids:
-        info_out = run(["diskutil", "info", id], capture_output=True)
 
-        info = {
-            line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
-            for line in info_out.split("\n") if line != ""
-        }
+def get_ntfs_volume(id):
+    info_out = run(["diskutil", "info", id], capture_output=True)
 
-        if (
-            info["Type (Bundle)"] == "ntfs"
-            and info["File System Personality"] == "NTFS"
-            # Older versions of diskutil used the label "Read-Only Media"
-            and (info.get("Media Read-Only") or info.get("Read-Only Media")) == "No"
-        ):
-            volumes[id] = Volume(
-                id=id,
-                node=info["Device Node"],
-                name=info["Volume Name"] if info["Volume Name"] != "" else "Untitled",
-                mounted=info["Mounted"] == "Yes",
-                size=re.match(r"\d+(\.\d+)? \S+", info["Disk Size"])[0],
-                # Older versions of diskutil used the label "Read-Only Volume"
-                read_only=(info.get("Volume Read-Only") or info.get("Read-Only Volume")).startswith("Yes"),
-                internal=info.get("Device Location") == "Internal"
-            )
+    info = {
+        line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
+        for line in info_out.split("\n") if line != ""
+    }
 
-    return volumes
+    if (
+        info["Type (Bundle)"] != "ntfs"
+        or info["File System Personality"] != "NTFS"
+        # Older versions of diskutil used the label "Read-Only Media"
+        or (info.get("Media Read-Only") or info.get("Read-Only Media")).startswith("Yes")
+    ):
+        return None
+
+    return Volume(
+        id=id,
+        node=info["Device Node"],
+        name=info["Volume Name"] if info["Volume Name"] != "" else "Untitled",
+        mounted=info["Mounted"] == "Yes",
+        size=re.match(r"\d+(\.\d+)? \S+", info["Disk Size"])[0],
+        # Older versions of diskutil used the label "Read-Only Volume"
+        read_only=(info.get("Volume Read-Only") or info.get("Read-Only Volume")).startswith("Yes"),
+        internal=info.get("Device Location") == "Internal"
+    )
 
 
 def mount(volume, *, sudo=False):

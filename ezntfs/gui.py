@@ -27,7 +27,7 @@ class AppDelegate(NSObject):
         menu = NSMenu.new()
         menu.setAutoenablesItems_(False)
 
-        volumes = [v for v in ezntfs.get_ntfs_volumes().values() if v.mounted or v.internal]
+        volumes = [v for v in ezntfs.get_all_ntfs_volumes().values() if v.mounted or v.internal]
         print("Volumes:")
         print(volumes)
 
