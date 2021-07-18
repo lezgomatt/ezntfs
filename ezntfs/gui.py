@@ -10,8 +10,6 @@ from . import ezntfs
 
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
-        self.failure = None
-
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
 
         self.statusItem.button().setTitle_("ezNTFS")
@@ -39,15 +37,10 @@ class AppDelegate(NSObject):
         for volume in volumes:
             label = f"{volume.name} [{volume.size}]"
             menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
+            menuItem.setRepresentedObject_(volume)
             if volume.access is ezntfs.Access.WRITABLE:
                 menuItem.setState_(NSControlStateValueOn)
                 menuItem.setEnabled_(False)
-
-        if self.failure is not None:
-            menu.addItem_(NSMenuItem.separatorItem())
-            menuItem = menu.addItemWithTitle_action_keyEquivalent_(f"Failed to mount: {self.failure[0]}", "", "")
-            menuItem.setEnabled_(False)
-            menu.addItemWithTitle_action_keyEquivalent_("View logs", "viewFailureLogs:", "")
 
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
@@ -56,27 +49,24 @@ class AppDelegate(NSObject):
         self.statusItem.setVisible_(len(volumes) > 0)
 
     def mountVolume_(self, menuItem):
-        volume_id = menuItem.representedObject()
+        volume = menuItem.representedObject()
 
-        self.performSelectorInBackground_withObject_(self.runMountCommand_, volume_id)
+        self.performSelectorInBackground_withObject_(self.runMountCommands_, volume)
 
-    def runMountCommand_(self, volume_id):
-        # assumes ezntfs has NOPASSWD set in sudoers
-        result = subprocess.run(["sudo", "--non-interactive", "ezntfs", volume_id], capture_output=True)
-        try:
-            result.check_returncode()
-            self.failure = None
-        except:
-            logs = result.stdout.decode() + result.stderr.decode()
-            self.failure = (volume_id, logs)
-        finally:
-            self.build_menu()
+    def runMountCommands_(self, volume):
+        if volume.access is ezntfs.Access.WRITABLE:
+            return
 
-    def viewFailureLogs_(self, menuItem):
-        with NamedTemporaryFile(mode="w", prefix="ezntfs-", suffix=".log.txt", delete=False) as temp_log_file:
-            temp_log_file.write(self.failure[1])
-            temp_log_file.flush()
-            subprocess.call(["open", temp_log_file.name])
+        if volume.mounted:
+            ok = ezntfs.macos_unmount(volume)
+            if not ok:
+                return
+
+        ok = ezntfs.mount(volume, sudo=True)
+        if not ok:
+            if volume.mounted:
+                ezntfs.macos_mount(volume)
+
 
 def main():
     workspace = NSWorkspace.sharedWorkspace()
