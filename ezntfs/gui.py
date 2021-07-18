@@ -62,7 +62,7 @@ class AppDelegate(NSObject):
             if not ok:
                 return
 
-        ok = ezntfs.mount(volume, sudo=True)
+        ok = ezntfs.mount(volume)
         if not ok:
             if volume.mounted:
                 ezntfs.macos_mount(volume)

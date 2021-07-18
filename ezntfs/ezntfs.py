@@ -67,7 +67,7 @@ def get_ntfs_volume(id):
     )
 
 
-def mount(volume, *, sudo=False):
+def mount(volume):
     cmd = build_mount_command(
         volume,
         user_id=os.getenv("SUDO_UID", os.getuid()),
@@ -75,11 +75,9 @@ def mount(volume, *, sudo=False):
         path=genrate_path(volume),
     )
 
-    if sudo:
-        # assumes ntfs-3g has NOPASSWD set in sudoers
-        return run(["sudo", "--non-interactive"] + cmd)
-    else:
-        return run(cmd)
+    # User must run this command as root (via sudo)
+    # or ntfs-3g must have NOPASSWD set in sudoers
+    return run(["sudo", "--non-interactive"] + cmd)
 
 
 def build_mount_command(volume, *, user_id, group_id, path):
