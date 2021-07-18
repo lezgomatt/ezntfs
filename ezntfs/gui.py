@@ -39,8 +39,7 @@ class AppDelegate(NSObject):
         for volume in volumes:
             label = f"{volume.name} [{volume.size}]"
             menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
-            menuItem.setRepresentedObject_(volume.id)
-            if not volume.read_only:
+            if volume.access is ezntfs.Access.WRITABLE:
                 menuItem.setState_(NSControlStateValueOn)
                 menuItem.setEnabled_(False)
 

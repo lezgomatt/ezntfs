@@ -1,10 +1,13 @@
 from collections import namedtuple
+from enum import Enum
 import os
 import re
 import subprocess
 
 
-Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "read_only", "internal"])
+Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "access", "internal"])
+Access = Enum("Access", ["READ_ONLY", "WRITABLE", "NOT_APPLICABLE", "UNKNOWN"])
+
 
 
 def get_all_ntfs_volumes():
@@ -36,9 +39,22 @@ def get_ntfs_volume(id):
         info["Type (Bundle)"] != "ntfs"
         or info["File System Personality"] != "NTFS"
         # Older versions of diskutil used the label "Read-Only Media"
-        or (info.get("Media Read-Only") or info.get("Read-Only Media")).startswith("Yes")
+        or (info.get("Media Read-Only") or info.get("Read-Only Media")) == "Yes"
     ):
         return None
+
+    # Older versions of diskutil used the label "Read-Only Volume"
+    ro_value = (info.get("Volume Read-Only") or info.get("Read-Only Volume"))
+    # Remove trailing notes enclosed in parentheses, examples:
+    # - "Yes (read-only mount flag set)" => "Yes"
+    # - "Not applicable (not mounted)" => "Not applicable"
+    ro_value = re.sub(r"\s*\(.*\)$", "", ro_value)
+    access = (
+            Access.READ_ONLY if ro_value == "Yes"
+            else Access.WRITABLE if ro_value == "No"
+            else Access.NOT_APPLICABLE if ro_value == "Not applicable"
+            else Access.UNKNOWN
+    )
 
     return Volume(
         id=id,
@@ -46,8 +62,7 @@ def get_ntfs_volume(id):
         name=info["Volume Name"] if info["Volume Name"] != "" else "Untitled",
         mounted=info["Mounted"] == "Yes",
         size=re.match(r"\d+(\.\d+)? \S+", info["Disk Size"])[0],
-        # Older versions of diskutil used the label "Read-Only Volume"
-        read_only=(info.get("Volume Read-Only") or info.get("Read-Only Volume")).startswith("Yes"),
+        access=access,
         internal=info.get("Device Location") == "Internal"
     )
 

@@ -52,9 +52,10 @@ def list_volumes(volumes):
 
     for id, volume in volumes.items():
         name = f"{id}: {volume.name} [{volume.size}]"
+        is_read_only = volume.access is ezntfs.Access.READ_ONLY
         details = (
             "mounted: " + ("yes" if volume.mounted else "no")
-            + (" (read-only)" if volume.read_only else "")
+            + (" (read-only)" if is_read_only else "")
         )
 
         print(f"{name} -- {details}")
@@ -71,11 +72,11 @@ def mount_all_volumes(volumes):
 def mount_volume(volume):
     print(f"Volume: {volume.name} [{volume.size}]")
 
-    if volume.mounted:
-        if not volume.read_only:
-            print(f"{volume.name} is already writable.")
-            return False
+    if volume.access is ezntfs.Access.WRITABLE:
+        print(f"{volume.name} is already writable.")
+        return True
 
+    if volume.mounted:
         print("Unmounting...")
         ok = ezntfs.macos_unmount(volume)
         if not ok:
