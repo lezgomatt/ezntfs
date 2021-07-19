@@ -2,12 +2,52 @@ from collections import namedtuple
 from enum import Enum
 import os
 import re
+import shutil
 import subprocess
 
 
+EnvironmentInfo = namedtuple("EnvironmentInfo", ["fuse", "ntfs_3g", "can_mount"])
 Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "access", "internal"])
 Access = Enum("Access", ["READ_ONLY", "WRITABLE", "NOT_APPLICABLE", "UNKNOWN"])
 
+
+def get_environment_info():
+    fuse = (
+        "macfuse" if os.path.exists("/Library/Filesystems/macfuse.fs")
+        else "osxfuse" if os.path.exists("/Library/Filesystems/osxfuse.fs")
+        else None
+    )
+
+    ntfs_3g = get_ntfs_3g_version()
+
+    test_cmd = ["sudo", "--non-interactive", "ntfs-3g", "--version"]
+    can_mount = (
+        fuse is not None
+        and ntfs_3g is not None
+        and subprocess.run(test_cmd, capture_output=True).returncode == 0
+    )
+
+    return EnvironmentInfo(fuse=fuse, ntfs_3g=ntfs_3g, can_mount=can_mount)
+
+
+def get_ntfs_3g_version():
+    if shutil.which("ntfs-3g") is None:
+        return None
+
+    result = subprocess.run(["ntfs-3g", "--version"], capture_output=True)
+    if result.returncode != 0:
+        return None
+
+    version = result.stderr.decode().strip()
+    m = re.match(r"ntfs-3g (\d+)\.(\d+)\.(\d+) external FUSE (\d+)", version)
+    if m is None:
+        return None
+
+    year = int(m.group(1))
+    month = int(m.group(2))
+    day = int(m.group(3))
+
+    return (year, month, day)
 
 
 def get_all_ntfs_volumes():

@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 
 from . import ezntfs
@@ -19,31 +18,37 @@ def main():
         print(usage)
         sys.exit(1)
 
+    env = ezntfs.get_environment_info()
+    if env.fuse is None:
+        sys.exit("ERROR: Failed to detect macFUSE.")
+    if env.ntfs_3g is None:
+        sys.exit("ERROR: Failed to detect ntfs-3g.")
+
     command = sys.argv[1]
     volumes = ezntfs.get_all_ntfs_volumes()
 
     if command == "list":
         list_volumes(volumes)
-    elif command == "all":
-        run_checks()
+        sys.exit(0)
+
+    if command == "all":
+        if not env.can_mount:
+            sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
+
         mount_all_volumes(volumes)
-    elif command in volumes:
-        run_checks()
+        sys.exit(0)
+
+    if command in volumes:
+        if not env.can_mount:
+            sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
+
         ok = mount_volume(volumes[command])
         sys.exit(0 if ok else 1)
-    else:
-        print(f"ezntfs: Invalid command or disk id.")
-        print()
-        print(usage)
-        sys.exit(1)
 
-
-def run_checks():
-    if shutil.which("ntfs-3g") is None:
-        sys.exit("ERROR: Could not find ntfs-3g.")
-
-    if not os.geteuid() == 0:
-        sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
+    print(f"ezntfs: Invalid command or disk id.")
+    print()
+    print(usage)
+    sys.exit(1)
 
 
 def list_volumes(volumes):
