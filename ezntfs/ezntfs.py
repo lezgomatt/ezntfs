@@ -39,15 +39,16 @@ def get_ntfs_3g_version():
         return None
 
     version = result.stderr.decode().strip()
-    m = re.match(r"ntfs-3g (\d+)\.(\d+)\.(\d+) external FUSE (\d+)", version)
+    m = re.match(r"ntfs-3g (\d+)\.(\d+)\.(\d+)(?:AR\.(\d+))? external FUSE (\d+)", version)
     if m is None:
         return None
 
     year = int(m.group(1))
     month = int(m.group(2))
     day = int(m.group(3))
+    ar = int(m.group(4)) if m.group(4) is not None else 0
 
-    return (year, month, day)
+    return (year, month, day, ar)
 
 
 def get_all_ntfs_volumes():
@@ -107,9 +108,10 @@ def get_ntfs_volume(id):
     )
 
 
-def mount(volume):
+def mount(volume, version=None):
     cmd = build_mount_command(
         volume,
+        version=version,
         user_id=os.getenv("SUDO_UID", os.getuid()),
         group_id=os.getenv("SUDO_GID", os.getgid()),
         path=genrate_path(volume),
@@ -120,13 +122,15 @@ def mount(volume):
     return run(["sudo", "--non-interactive"] + cmd)
 
 
-def build_mount_command(volume, *, user_id, group_id, path):
+def build_mount_command(volume, *, version, user_id, group_id, path):
+    xattr_option = "user_xattr" if version is not None and version >= (2017, 3, 23, 6) else "auto_xattr"
+
     return [
         "ntfs-3g",
         "-o", f"volname={volume.name}",
         "-o", "local",
         "-o", "allow_other",
-        "-o", "auto_xattr",
+        "-o", xattr_option,
         "-o", f"uid={user_id}",
         "-o", f"gid={group_id}",
         "-o", "windows_names",

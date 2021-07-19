@@ -35,14 +35,14 @@ def main():
         if not env.can_mount:
             sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
 
-        mount_all_volumes(volumes)
+        mount_all_volumes(volumes, version=env.ntfs_3g)
         sys.exit(0)
 
     if command in volumes:
         if not env.can_mount:
             sys.exit("ERROR: Need root privileges to mount via ntfs-3g.")
 
-        ok = mount_volume(volumes[command])
+        ok = mount_volume(volumes[command], version=env.ntfs_3g)
         sys.exit(0 if ok else 1)
 
     print(f"ezntfs: Invalid command or disk id.")
@@ -66,15 +66,15 @@ def list_volumes(volumes):
         print(f"{name} -- {details}")
 
 
-def mount_all_volumes(volumes):
+def mount_all_volumes(volumes, version):
     print(f"Found {len(volumes)} NTFS volume(s).")
 
     for id, volume in volumes.items():
         print()
-        mount_volume(volume)
+        mount_volume(volume, version)
 
 
-def mount_volume(volume):
+def mount_volume(volume, version):
     print(f"Volume: {volume.name} [{volume.size}]")
 
     if volume.access is ezntfs.Access.WRITABLE:
@@ -88,7 +88,7 @@ def mount_volume(volume):
             return False
 
     print(f"Mounting via ntfs-3g...")
-    ok = ezntfs.mount(volume)
+    ok = ezntfs.mount(volume, version=version)
     if ok:
         print(f"Successfully mounted {volume.name}.")
         return True
