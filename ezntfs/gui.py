@@ -10,6 +10,8 @@ from . import ezntfs
 
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
+        self.env = ezntfs.get_environment_info()
+
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
 
         self.statusItem.button().setTitle_("ezNTFS")
@@ -25,28 +27,42 @@ class AppDelegate(NSObject):
         menu = NSMenu.new()
         menu.setAutoenablesItems_(False)
 
-        volumes = [v for v in ezntfs.get_all_ntfs_volumes().values() if v.mounted or v.internal]
-        print("Volumes:")
-        print(volumes)
-
-        if len(volumes) == 0:
-            label = "No NTFS volumes found."
+        if self.env.fuse is None:
+            label = "Failed to detect macFUSE."
             menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
             menuItem.setEnabled_(False)
+        elif self.env.ntfs_3g is None:
+            label = "Failed to detect ntfs-3g."
+            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
+            menuItem.setEnabled_(False)
+        elif not self.env.can_mount:
+            label = "Missing privileges to mount via ntfs-3g."
+            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
+            menuItem.setEnabled_(False)
+        else:
+            volumes = [v for v in ezntfs.get_all_ntfs_volumes().values() if v.mounted or v.internal]
+            print("Volumes:")
+            print(volumes)
 
-        for volume in volumes:
-            label = f"{volume.name} [{volume.size}]"
-            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
-            menuItem.setRepresentedObject_(volume)
-            if volume.access is ezntfs.Access.WRITABLE:
-                menuItem.setState_(NSControlStateValueOn)
+            if len(volumes) == 0:
+                label = "No NTFS volumes found."
+                menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
                 menuItem.setEnabled_(False)
+
+            for volume in volumes:
+                label = f"{volume.name} [{volume.size}]"
+                menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
+                menuItem.setRepresentedObject_(volume)
+                if volume.access is ezntfs.Access.WRITABLE:
+                    menuItem.setState_(NSControlStateValueOn)
+                    menuItem.setEnabled_(False)
 
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
         self.statusItem.setMenu_(menu)
-        self.statusItem.setVisible_(len(volumes) > 0)
+        self.statusItem.setVisible_(True)
+        # self.statusItem.setVisible_(len(volumes) > 0)
 
     def mountVolume_(self, menuItem):
         volume = menuItem.representedObject()
@@ -62,7 +78,7 @@ class AppDelegate(NSObject):
             if not ok:
                 return
 
-        ok = ezntfs.mount(volume)
+        ok = ezntfs.mount(volume, version=self.env.ntfs_3g)
         if not ok:
             if volume.mounted:
                 ezntfs.macos_mount(volume)
