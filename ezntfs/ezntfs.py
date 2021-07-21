@@ -7,7 +7,7 @@ import subprocess
 
 
 EnvironmentInfo = namedtuple("EnvironmentInfo", ["fuse", "ntfs_3g", "can_mount"])
-Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "size", "access", "internal"])
+Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "mount_path", "size", "access", "internal"])
 Access = Enum("Access", ["READ_ONLY", "WRITABLE", "NOT_APPLICABLE", "UNKNOWN"])
 
 
@@ -102,9 +102,10 @@ def get_ntfs_volume(id):
         node=info["Device Node"],
         name=info["Volume Name"] if info["Volume Name"] != "" else "Untitled",
         mounted=info["Mounted"] == "Yes",
+        mount_path=info.get("Mount Point"),
         size=re.match(r"\d+(\.\d+)? \S+", info["Disk Size"])[0],
         access=access,
-        internal=info.get("Device Location") == "Internal"
+        internal=info["Device Location"] == "Internal"
     )
 
 
