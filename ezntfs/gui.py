@@ -8,19 +8,36 @@ import subprocess
 from . import ezntfs
 
 
+default_icon = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS")
+busy_icon = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
+
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
+        self.mounting = None
+
         self.env = ezntfs.get_environment_info()
 
         self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
 
         self.statusItem.button().setTitle_("ezNTFS")
-        self.statusItem.button().setImage_(NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS"))
+        self.statusItem.button().setImage_(default_icon)
 
         self.build_menu()
 
     def volumeDidChange_(self, notification):
-        NSLog("Volume changed.")
+        if notification.name() == NSWorkspaceDidMountNotification:
+            NSLog("Volume mounted.")
+            path = notification.userInfo().valueForKey_("NSDevicePath")
+            if self.mounting is not None and self.mounting.mount_path == path:
+                self.mounting = None
+                self.statusItem.button().setImage_(default_icon)
+        elif notification.name() == NSWorkspaceDidUnmountNotification:
+            NSLog("Volume unmounted.")
+        elif notification.name() == NSWorkspaceDidRenameVolumeNotification:
+            NSLog("Volume renamed.")
+        else:
+            NSLog("Volume changed?")
+
         self.build_menu()
 
     def build_menu(self):
@@ -66,6 +83,9 @@ class AppDelegate(NSObject):
 
     def mountVolume_(self, menuItem):
         volume = menuItem.representedObject()
+        self.mounting = volume
+
+        self.statusItem.button().setImage_(busy_icon)
 
         self.performSelectorInBackground_withObject_(self.runMountCommands_, volume)
 
