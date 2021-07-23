@@ -109,13 +109,16 @@ def get_ntfs_volume(id):
     )
 
 
-def mount(volume, version=None):
+def mount(volume, version=None, path=None):
+    if path is None:
+        path = genrate_path(volume)
+
     cmd = build_mount_command(
         volume,
         version=version,
         user_id=os.getenv("SUDO_UID", os.getuid()),
         group_id=os.getenv("SUDO_GID", os.getgid()),
-        path=genrate_path(volume),
+        path=path,
     )
 
     # User must run this command as root (via sudo)
