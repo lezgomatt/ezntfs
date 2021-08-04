@@ -57,7 +57,11 @@ class AppDelegate(NSObject):
             menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
             menuItem.setEnabled_(False)
         else:
-            volumes = [v for v in ezntfs.get_all_ntfs_volumes().values() if v.mounted or v.internal]
+            volumes = [
+                v for v in ezntfs.get_all_ntfs_volumes().values()
+                if v.mounted or v.internal
+                or self.mounting is not None and v.id == self.mounting.id
+            ]
             print("Volumes:")
             print(volumes)
 
@@ -70,7 +74,9 @@ class AppDelegate(NSObject):
                 label = f"{volume.name} [{volume.size}]"
                 menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
                 menuItem.setRepresentedObject_(volume)
-                if volume.access is ezntfs.Access.WRITABLE:
+                if self.mounting is not None and volume.id == self.mounting.id:
+                    menuItem.setEnabled_(False)
+                elif volume.access is ezntfs.Access.WRITABLE:
                     menuItem.setState_(NSControlStateValueOn)
                     menuItem.setEnabled_(False)
 
