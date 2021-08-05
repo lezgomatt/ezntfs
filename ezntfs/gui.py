@@ -14,6 +14,7 @@ busy_icon = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externa
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
         self.mounting = None
+        self.menu = NSMenu.new()
 
         self.env = ezntfs.get_environment_info()
 
@@ -41,7 +42,8 @@ class AppDelegate(NSObject):
         self.build_menu()
 
     def build_menu(self):
-        menu = NSMenu.new()
+        menu = self.menu
+        menu.removeAllItems()
         menu.setAutoenablesItems_(False)
 
         if self.env.fuse is None:
