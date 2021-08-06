@@ -25,6 +25,16 @@ class AppDelegate(NSObject):
 
         self.build_menu()
 
+        self.observe_mount_changes()
+
+    def observe_mount_changes(self):
+        workspace = NSWorkspace.sharedWorkspace()
+        notification_center = workspace.notificationCenter()
+
+        notification_center.addObserver_selector_name_object_(self, "volumeDidChange:", NSWorkspaceDidMountNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "volumeDidChange:", NSWorkspaceDidUnmountNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "volumeDidChange:", NSWorkspaceDidRenameVolumeNotification, None)
+
     def volumeDidChange_(self, notification):
         if notification.name() == NSWorkspaceDidMountNotification:
             NSLog("Volume mounted.")
@@ -113,17 +123,9 @@ class AppDelegate(NSObject):
 
 
 def main():
-    workspace = NSWorkspace.sharedWorkspace()
-    notification_center = workspace.notificationCenter()
-
     app = NSApplication.sharedApplication()
     delegate = AppDelegate.new()
     app.setDelegate_(delegate)
-
     app.setActivationPolicy_(NSApplicationActivationPolicyProhibited)
-
-    notification_center.addObserver_selector_name_object_(delegate, "volumeDidChange:", NSWorkspaceDidMountNotification, None)
-    notification_center.addObserver_selector_name_object_(delegate, "volumeDidChange:", NSWorkspaceDidUnmountNotification, None)
-    notification_center.addObserver_selector_name_object_(delegate, "volumeDidChange:", NSWorkspaceDidRenameVolumeNotification, None)
 
     AppHelper.runEventLoop()
