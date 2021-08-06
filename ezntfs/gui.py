@@ -116,7 +116,7 @@ class AppDelegate(NSObject):
             if not ok:
                 return
 
-        ok = ezntfs.mount(volume, version=self.env.ntfs_3g)
+        ok = ezntfs.mount(volume, version=self.env.ntfs_3g, path=volume.mount_path)
         if not ok:
             if volume.mounted:
                 ezntfs.macos_mount(volume)
