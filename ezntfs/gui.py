@@ -22,6 +22,7 @@ class AppDelegate(NSObject):
 
         self.status_item.button().setTitle_("ezNTFS")
         self.status_item.button().setImage_(default_icon)
+        self.status_item.button().setToolTip_("ezNTFS")
 
         self.build_menu()
 
@@ -88,9 +89,13 @@ class AppDelegate(NSObject):
                 menuItem.setRepresentedObject_(volume)
                 if self.mounting is not None and volume.id == self.mounting.id:
                     menuItem.setEnabled_(False)
+                    menuItem.setToolTip_("Mounting...")
                 elif volume.access is ezntfs.Access.WRITABLE:
                     menuItem.setState_(NSControlStateValueOn)
                     menuItem.setEnabled_(False)
+                    menuItem.setToolTip_("Volume is writable")
+                else:
+                    menuItem.setToolTip_("Click to mount with ntfs-3g")
 
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
