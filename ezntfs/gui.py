@@ -14,14 +14,14 @@ busy_icon = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externa
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
         self.mounting = None
-        self.menu = NSMenu.new()
 
         self.env = ezntfs.get_environment_info()
 
-        self.statusItem = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
+        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
+        self.status_item.setMenu_(NSMenu.new())
 
-        self.statusItem.button().setTitle_("ezNTFS")
-        self.statusItem.button().setImage_(default_icon)
+        self.status_item.button().setTitle_("ezNTFS")
+        self.status_item.button().setImage_(default_icon)
 
         self.build_menu()
 
@@ -41,7 +41,7 @@ class AppDelegate(NSObject):
             path = notification.userInfo().valueForKey_("NSDevicePath")
             if self.mounting is not None and self.mounting.mount_path == path:
                 self.mounting = None
-                self.statusItem.button().setImage_(default_icon)
+                self.status_item.button().setImage_(default_icon)
         elif notification.name() == NSWorkspaceDidUnmountNotification:
             NSLog("Volume unmounted.")
         elif notification.name() == NSWorkspaceDidRenameVolumeNotification:
@@ -52,7 +52,7 @@ class AppDelegate(NSObject):
         self.build_menu()
 
     def build_menu(self):
-        menu = self.menu
+        menu = self.status_item.menu()
         menu.removeAllItems()
         menu.setAutoenablesItems_(False)
 
@@ -95,15 +95,14 @@ class AppDelegate(NSObject):
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        self.statusItem.setMenu_(menu)
-        self.statusItem.setVisible_(True)
-        # self.statusItem.setVisible_(len(volumes) > 0)
+        self.status_item.setVisible_(True)
+        # self.status_item.setVisible_(len(volumes) > 0)
 
     def mountVolume_(self, menuItem):
         volume = menuItem.representedObject()
         self.mounting = volume
 
-        self.statusItem.button().setImage_(busy_icon)
+        self.status_item.button().setImage_(busy_icon)
 
         self.performSelectorInBackground_withObject_(self.runMountCommands_, volume)
 
