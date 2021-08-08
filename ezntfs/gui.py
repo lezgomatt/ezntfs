@@ -32,24 +32,25 @@ class AppDelegate(NSObject):
         workspace = NSWorkspace.sharedWorkspace()
         notification_center = workspace.notificationCenter()
 
-        notification_center.addObserver_selector_name_object_(self, "volumeDidChange:", NSWorkspaceDidMountNotification, None)
-        notification_center.addObserver_selector_name_object_(self, "volumeDidChange:", NSWorkspaceDidUnmountNotification, None)
-        notification_center.addObserver_selector_name_object_(self, "volumeDidChange:", NSWorkspaceDidRenameVolumeNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "volumeDidMount:", NSWorkspaceDidMountNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "volumeDidUnmount:", NSWorkspaceDidUnmountNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "volumeDidRename:", NSWorkspaceDidRenameVolumeNotification, None)
 
-    def volumeDidChange_(self, notification):
-        if notification.name() == NSWorkspaceDidMountNotification:
-            NSLog("Volume mounted.")
-            path = notification.userInfo().valueForKey_("NSDevicePath")
-            if self.mounting is not None and self.mounting.mount_path == path:
-                self.mounting = None
-                self.status_item.button().setImage_(default_icon)
-        elif notification.name() == NSWorkspaceDidUnmountNotification:
-            NSLog("Volume unmounted.")
-        elif notification.name() == NSWorkspaceDidRenameVolumeNotification:
-            NSLog("Volume renamed.")
-        else:
-            NSLog("Volume changed?")
+    def volumeDidMount_(self, notification):
+        NSLog("Volume mounted.")
+        path = notification.userInfo().valueForKey_("NSDevicePath")
+        if self.mounting is not None and self.mounting.mount_path == path:
+            self.mounting = None
+            self.status_item.button().setImage_(default_icon)
 
+        self.build_menu()
+
+    def volumeDidUnmount_(self, notification):
+        NSLog("Volume unmounted.")
+        self.build_menu()
+
+    def volumeDidRename_(self, notification):
+        NSLog("Volume renamed.")
         self.build_menu()
 
     def build_menu(self):
