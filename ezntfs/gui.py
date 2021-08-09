@@ -2,129 +2,239 @@ from Foundation import *
 from AppKit import *
 from PyObjCTools import AppHelper
 
-from tempfile import NamedTemporaryFile
+from collections import deque
 import subprocess
 
 from . import ezntfs
 
 
-default_icon = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS")
-busy_icon = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
+DEFAULT_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS")
+BUSY_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
+ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.xmark", "ezNTFS (error)")
 
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
+        self.initializeAppState()
+        self.initializeAppUi()
+
+        self.env = self.detectEnvironment()
+
+        if not self.state == "failed":
+            self.observeMountChanges()
+            self.goNext()
+
+    def initializeAppState(self):
+        self.state = "initializing"
+        self.needs_reload = True
+        self.volumes = []
+        self.mount_queue = deque()
         self.mounting = None
+        self.last_mount_failed = None
+        self.error = None
 
-        self.env = ezntfs.get_environment_info()
+    def initializeAppUi(self):
+        status_bar = NSStatusBar.systemStatusBar()
+        status_item = status_bar.statusItemWithLength_(NSVariableStatusItemLength)
+        status_item.setVisible_(False)
 
-        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
-        self.status_item.setMenu_(NSMenu.new())
+        button = status_item.button()
+        button.setTitle_("ezNTFS")
+        button.setImage_(DEFAULT_ICON)
+        button.setToolTip_("ezNTFS") # TODO: add version number
 
-        self.status_item.button().setTitle_("ezNTFS")
-        self.status_item.button().setImage_(default_icon)
-        self.status_item.button().setToolTip_("ezNTFS")
+        menu = NSMenu.new()
+        menu.setAutoenablesItems_(False)
+        status_item.setMenu_(menu)
 
-        self.build_menu()
+        self.status_item = status_item
 
-        self.observe_mount_changes()
+    def goNext(self):
+        if (
+            self.state == "reloading"
+            or self.state == "mounting"
+            or self.state == "failed"
+        ):
+            pass
+        elif self.needs_reload:
+            self.needs_reload = False
+            self.reloadVolumeList()
+        elif len(self.mount_queue) > 0:
+            volume = self.mount_queue.popleft()
+            self.mountVolume_(volume)
 
-    def observe_mount_changes(self):
+        self.refreshUi()
+
+    def fail_(self, message):
+        self.performSelectorOnMainThread_withObject_waitUntilDone_(
+            self.handleFail_, message, True
+        )
+
+    def handleFail_(self, message):
+        self.state = "failed"
+        self.error = message
+        self.goNext()
+
+    def detectEnvironment(self):
+        try:
+            env = ezntfs.get_environment_info()
+
+            if env.fuse is None:
+                self.fail_("Failed to detect macFUSE")
+            elif env.ntfs_3g is None:
+                self.fail_("Failed to detect ntfs-3g")
+            elif not env.can_mount:
+                self.fail_("Missing privileges to mount via ntfs-3g")
+
+            return env
+        except:
+            self.fail_("Failed to detect the environment")
+
+    def observeMountChanges(self):
         workspace = NSWorkspace.sharedWorkspace()
         notification_center = workspace.notificationCenter()
 
-        notification_center.addObserver_selector_name_object_(self, "volumeDidMount:", NSWorkspaceDidMountNotification, None)
-        notification_center.addObserver_selector_name_object_(self, "volumeDidUnmount:", NSWorkspaceDidUnmountNotification, None)
-        notification_center.addObserver_selector_name_object_(self, "volumeDidRename:", NSWorkspaceDidRenameVolumeNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "handleVolumeDidMount:", NSWorkspaceDidMountNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "handleVolumeDidUnmount:", NSWorkspaceDidUnmountNotification, None)
+        notification_center.addObserver_selector_name_object_(self, "handleVolumeDidRename:", NSWorkspaceDidRenameVolumeNotification, None)
 
-    def volumeDidMount_(self, notification):
-        NSLog("Volume mounted.")
-        path = notification.userInfo().valueForKey_("NSDevicePath")
-        if self.mounting is not None and self.mounting.mount_path == path:
-            self.mounting = None
-            self.status_item.button().setImage_(default_icon)
+    def handleVolumeDidMount_(self, notification):
+        self.needs_reload = True
+        self.goNext()
 
-        self.build_menu()
+    def handleVolumeDidUnmount_(self, notification):
+        self.needs_reload = True
+        self.goNext()
 
-    def volumeDidUnmount_(self, notification):
-        NSLog("Volume unmounted.")
-        self.build_menu()
+    def handleVolumeDidRename_(self, notification):
+        self.needs_reload = True
+        self.goNext()
 
-    def volumeDidRename_(self, notification):
-        NSLog("Volume renamed.")
-        self.build_menu()
+    def reloadVolumeList(self):
+        self.performSelectorInBackground_withObject_(self.doReloadVolumeList_, None)
 
-    def build_menu(self):
+    def doReloadVolumeList_(self, nothing):
+        try:
+            volumes = ezntfs.get_all_ntfs_volumes().values()
+            self.performSelectorOnMainThread_withObject_waitUntilDone_(
+                self.handleReloadVolumeList_, volumes, True
+            )
+        except:
+            self.fail_("Failed to reload volume list")
+
+    def handleReloadVolumeList_(self, volumes):
+        self.state = "ready"
+        self.volumes = [v for v in volumes if v.mounted or v.internal or self.isCurrentlyMounting_(v)]
+        self.goNext()
+
+    def isCurrentlyMounting_(self, volume):
+        return self.mounting is not None and self.mounting.id == volume.id
+
+    def refreshUi(self):
+        self.refreshIcon()
+
         menu = self.status_item.menu()
         menu.removeAllItems()
-        menu.setAutoenablesItems_(False)
 
-        if self.env.fuse is None:
-            label = "Failed to detect macFUSE."
-            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
-            menuItem.setEnabled_(False)
-        elif self.env.ntfs_3g is None:
-            label = "Failed to detect ntfs-3g."
-            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
-            menuItem.setEnabled_(False)
-        elif not self.env.can_mount:
-            label = "Missing privileges to mount via ntfs-3g."
-            menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
-            menuItem.setEnabled_(False)
+        if self.state == "initializing":
+            self.addTextItem_withLabel_(menu, "Initializing...")
+        elif self.state == "failed":
+            self.addTextItem_withLabel_(menu, self.error)
         else:
-            volumes = [
-                v for v in ezntfs.get_all_ntfs_volumes().values()
-                if v.mounted or v.internal
-                or self.mounting is not None and v.id == self.mounting.id
-            ]
-            print("Volumes:")
-            print(volumes)
+            if self.last_mount_failed is not None:
+                self.addTextItem_withLabel_(menu, f"Failed to mount: {self.last_mount_failed.name}")
+                menu.addItem_(NSMenuItem.separatorItem())
 
-            if len(volumes) == 0:
-                label = "No NTFS volumes found."
-                menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
-                menuItem.setEnabled_(False)
-
-            for volume in volumes:
-                label = f"{volume.name} [{volume.size}]"
-                menuItem = menu.addItemWithTitle_action_keyEquivalent_(label, "mountVolume:", "")
-                menuItem.setRepresentedObject_(volume)
-                if self.mounting is not None and volume.id == self.mounting.id:
-                    menuItem.setEnabled_(False)
-                    menuItem.setToolTip_("Mounting...")
-                elif volume.access is ezntfs.Access.WRITABLE:
-                    menuItem.setState_(NSControlStateValueOn)
-                    menuItem.setEnabled_(False)
-                    menuItem.setToolTip_("Volume is writable")
-                else:
-                    menuItem.setToolTip_("Click to mount with ntfs-3g")
+            self.addVolumeItems_(menu)
 
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
         self.status_item.setVisible_(True)
-        # self.status_item.setVisible_(len(volumes) > 0)
+        # self.status_item.setVisible_(len(self.volumes) > 0)
 
-    def mountVolume_(self, menuItem):
-        volume = menuItem.representedObject()
-        self.mounting = volume
+    def refreshIcon(self):
+        button = self.status_item.button()
+        if self.state == "failed":
+            button.setImage_(ERROR_ICON)
+        elif (
+            self.state == "initializing"
+            or self.state == "reloading"
+            or self.state == "mounting"
+        ):
+            button.setImage_(BUSY_ICON)
+        else:
+            button.setImage_(DEFAULT_ICON)
 
-        self.status_item.button().setImage_(busy_icon)
+    def addTextItem_withLabel_(self, menu, label):
+        item = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
+        item.setEnabled_(False)
 
-        self.performSelectorInBackground_withObject_(self.runMountCommands_, volume)
+    def addVolumeItems_(self, menu):
+        if len(self.volumes) == 0:
+            self.addTextItem_withLabel_(menu, "No NTFS volumes found")
 
-    def runMountCommands_(self, volume):
+        for volume in self.volumes:
+            label = f"{volume.name} [{volume.size}]"
+            item = menu.addItemWithTitle_action_keyEquivalent_(label, "handleVolumeClicked:", "")
+            item.setRepresentedObject_(volume)
+            if self.isCurrentlyMounting_(volume):
+                item.setEnabled_(False)
+                item.setToolTip_("Mounting...")
+            elif volume.access is ezntfs.Access.WRITABLE:
+                item.setState_(NSControlStateValueOn)
+                item.setEnabled_(False)
+                item.setToolTip_("Volume is writable")
+            else:
+                item.setToolTip_("Click to mount with ntfs-3g")
+
+    def handleVolumeClicked_(self, menu_item):
+        volume = menu_item.representedObject()
+        self.mount_queue.append(volume)
+        self.goNext()
+
+    def mountVolume_(self, volume):
         if volume.access is ezntfs.Access.WRITABLE:
-            return
+            return self.goNext()
 
-        if volume.mounted:
-            ok = ezntfs.macos_unmount(volume)
-            if not ok:
-                return
+        self.state = "mounting"
+        self.mounting = volume
+        self.performSelectorInBackground_withObject_(self.doMountVolume_, volume)
 
-        ok = ezntfs.mount(volume, version=self.env.ntfs_3g, path=volume.mount_path)
-        if not ok:
+    def doMountVolume_(self, volume):
+        try:
             if volume.mounted:
-                ezntfs.macos_mount(volume)
+                ok = ezntfs.macos_unmount(volume)
+                if not ok:
+                    return self.failedToMount_(volume)
+
+            ok = ezntfs.mount(volume, version=self.env.ntfs_3g, path=volume.mount_path)
+            if not ok:
+                if volume.mounted:
+                    ezntfs.macos_mount(volume)
+                return self.failedToMount_(volume)
+
+            self.performSelectorOnMainThread_withObject_waitUntilDone_(
+                self.handleMountVolumeOk_, volume, True
+            )
+        except:
+            self.failedToMount_(volume)
+
+    def handleMountVolumeOk_(self, volume):
+        self.state = "ready"
+        self.mounting = None
+        self.last_mount_failed = None
+        self.goNext()
+
+    def failedToMount_(self, volume):
+        self.performSelectorOnMainThread_withObject_waitUntilDone_(
+            self.handleMountVolumeFail_, volume, True
+        )
+
+    def handleMountVolumeFail_(self, volume):
+        self.state = "ready"
+        self.mounting = None
+        self.last_mount_failed = volume
+        self.goNext()
 
 
 def main():
