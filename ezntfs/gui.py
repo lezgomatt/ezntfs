@@ -110,6 +110,7 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def reloadVolumeList(self):
+        self.state = "reloading"
         self.performSelectorInBackground_withObject_(self.doReloadVolumeList_, None)
 
     def doReloadVolumeList_(self, nothing):
