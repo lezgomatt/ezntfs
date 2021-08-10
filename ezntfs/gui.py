@@ -12,6 +12,14 @@ DEFAULT_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("exte
 BUSY_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
 ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.xmark", "ezNTFS (error)")
 
+status_icons = {
+    "initializing": BUSY_ICON,
+    "failed": ERROR_ICON,
+    "reloading": BUSY_ICON,
+    "ready": DEFAULT_ICON,
+    "mounting": BUSY_ICON,
+}
+
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
         self.initializeAppState()
@@ -131,7 +139,7 @@ class AppDelegate(NSObject):
         return self.mounting is not None and self.mounting.id == volume.id
 
     def refreshUi(self):
-        self.refreshIcon()
+        self.status_item.button().setImage_(status_icons[self.state])
 
         menu = self.status_item.menu()
         menu.removeAllItems()
@@ -152,19 +160,6 @@ class AppDelegate(NSObject):
 
         self.status_item.setVisible_(True)
         # self.status_item.setVisible_(len(self.volumes) > 0)
-
-    def refreshIcon(self):
-        button = self.status_item.button()
-        if self.state == "failed":
-            button.setImage_(ERROR_ICON)
-        elif (
-            self.state == "initializing"
-            or self.state == "reloading"
-            or self.state == "mounting"
-        ):
-            button.setImage_(BUSY_ICON)
-        else:
-            button.setImage_(DEFAULT_ICON)
 
     def addTextItem_withLabel_(self, menu, label):
         item = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
