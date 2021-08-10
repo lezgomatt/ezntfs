@@ -88,7 +88,7 @@ def mount_volume(volume, version):
             return False
 
     print(f"Mounting via ntfs-3g...")
-    ok = ezntfs.mount(volume, version=version)
+    ok = ezntfs.mount(volume, version=version, path=volume.mount_path)
     if ok:
         print(f"Successfully mounted {volume.name}.")
         return True
