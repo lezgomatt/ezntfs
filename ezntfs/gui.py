@@ -3,6 +3,7 @@ from AppKit import *
 from PyObjCTools import AppHelper
 
 from collections import deque
+from enum import Enum
 import subprocess
 
 from . import ezntfs
@@ -12,12 +13,14 @@ DEFAULT_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("exte
 BUSY_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
 ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.xmark", "ezNTFS (error)")
 
+AppState = Enum("AppState", ["INITIALIZING", "FAILED", "RELOADING", "READY", "MOUNTING"])
+
 status_icons = {
-    "initializing": BUSY_ICON,
-    "failed": ERROR_ICON,
-    "reloading": BUSY_ICON,
-    "ready": DEFAULT_ICON,
-    "mounting": BUSY_ICON,
+    AppState.INITIALIZING: BUSY_ICON,
+    AppState.FAILED: ERROR_ICON,
+    AppState.RELOADING: BUSY_ICON,
+    AppState.READY: DEFAULT_ICON,
+    AppState.MOUNTING: BUSY_ICON,
 }
 
 class AppDelegate(NSObject):
@@ -27,18 +30,18 @@ class AppDelegate(NSObject):
 
         self.env = self.detectEnvironment()
 
-        if not self.state == "failed":
+        if not self.state == AppState.FAILED:
             self.observeMountChanges()
             self.goNext()
 
     def initializeAppState(self):
-        self.state = "initializing"
+        self.state = AppState.INITIALIZING
+        self.failure = None
         self.needs_reload = True
         self.volumes = []
         self.mount_queue = deque()
         self.mounting = None
         self.last_mount_failed = None
-        self.error = None
 
     def initializeAppUi(self):
         status_bar = NSStatusBar.systemStatusBar()
@@ -58,9 +61,9 @@ class AppDelegate(NSObject):
 
     def goNext(self):
         if (
-            self.state == "reloading"
-            or self.state == "mounting"
-            or self.state == "failed"
+            self.state == AppState.RELOADING
+            or self.state == AppState.MOUNTING
+            or self.state == AppState.FAILED
         ):
             pass
         elif self.needs_reload:
@@ -78,8 +81,8 @@ class AppDelegate(NSObject):
         )
 
     def handleFail_(self, message):
-        self.state = "failed"
-        self.error = message
+        self.state = AppState.FAILED
+        self.failure = message
         self.goNext()
 
     def detectEnvironment(self):
@@ -118,7 +121,7 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def reloadVolumeList(self):
-        self.state = "reloading"
+        self.state = AppState.RELOADING
         self.performSelectorInBackground_withObject_(self.doReloadVolumeList_, None)
 
     def doReloadVolumeList_(self, nothing):
@@ -128,10 +131,10 @@ class AppDelegate(NSObject):
                 self.handleReloadVolumeList_, volumes, True
             )
         except:
-            self.fail_("Failed to reload volume list")
+            self.fail_("Failed to retrieve the list of NTFS volumes")
 
     def handleReloadVolumeList_(self, volumes):
-        self.state = "ready"
+        self.state = AppState.READY
         self.volumes = [v for v in volumes if v.mounted or v.internal or self.isCurrentlyMounting_(v)]
         self.goNext()
 
@@ -144,10 +147,10 @@ class AppDelegate(NSObject):
         menu = self.status_item.menu()
         menu.removeAllItems()
 
-        if self.state == "initializing":
+        if self.state == AppState.INITIALIZING:
             self.addTextItem_withLabel_(menu, "Initializing...")
-        elif self.state == "failed":
-            self.addTextItem_withLabel_(menu, self.error)
+        elif self.state == AppState.FAILED:
+            self.addTextItem_withLabel_(menu, self.failure)
         else:
             if self.last_mount_failed is not None:
                 self.addTextItem_withLabel_(menu, f"Failed to mount: {self.last_mount_failed.name}")
@@ -192,7 +195,7 @@ class AppDelegate(NSObject):
         if volume.access is ezntfs.Access.WRITABLE:
             return self.goNext()
 
-        self.state = "mounting"
+        self.state = AppState.MOUNTING
         self.mounting = volume
         self.performSelectorInBackground_withObject_(self.doMountVolume_, volume)
 
@@ -216,7 +219,7 @@ class AppDelegate(NSObject):
             self.failedToMount_(volume)
 
     def handleMountVolumeOk_(self, volume):
-        self.state = "ready"
+        self.state = AppState.READY
         self.mounting = None
         self.last_mount_failed = None
         self.goNext()
@@ -227,7 +230,7 @@ class AppDelegate(NSObject):
         )
 
     def handleMountVolumeFail_(self, volume):
-        self.state = "ready"
+        self.state = AppState.READY
         self.mounting = None
         self.last_mount_failed = volume
         self.goNext()
