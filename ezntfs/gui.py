@@ -130,11 +130,14 @@ class AppDelegate(NSObject):
 
     def handleReloadVolumeList_(self, volumes):
         self.state = AppState.READY
-        self.volumes = [v for v in volumes if v.mounted or v.internal or self.isCurrentlyMounting_(v)]
+        self.volumes = [v for v in volumes if v.mounted or v.internal or self.isMountingVolume_(v)]
         self.goNext()
 
-    def isCurrentlyMounting_(self, volume):
-        return self.mounting is not None and self.mounting.id == volume.id
+    def isMountingVolume_(self, volume):
+        return (
+            self.mounting is not None and self.mounting.id == volume.id
+            or volume.id in (v.id for v in self.mount_queue)
+        )
 
     def refreshUi(self):
         self.status_item.button().setImage_(status_icons[self.state])
@@ -169,7 +172,7 @@ class AppDelegate(NSObject):
             label = f"{volume.name} [{volume.size}]"
             item = menu.addItemWithTitle_action_keyEquivalent_(label, "handleVolumeClicked:", "")
             item.setRepresentedObject_(volume)
-            if self.isCurrentlyMounting_(volume):
+            if self.isMountingVolume_(volume):
                 item.setEnabled_(False)
                 item.setToolTip_("Mounting...")
             elif volume.access is ezntfs.Access.WRITABLE:
