@@ -13,13 +13,12 @@ DEFAULT_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("exte
 BUSY_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
 ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.xmark", "ezNTFS (error)")
 
-AppState = Enum("AppState", ["INITIALIZING", "FAILED", "RELOADING", "READY", "MOUNTING"])
+AppState = Enum("AppState", ["READY", "FAILED", "RELOADING", "MOUNTING"])
 
 status_icons = {
-    AppState.INITIALIZING: BUSY_ICON,
+    AppState.READY: DEFAULT_ICON,
     AppState.FAILED: ERROR_ICON,
     AppState.RELOADING: BUSY_ICON,
-    AppState.READY: DEFAULT_ICON,
     AppState.MOUNTING: BUSY_ICON,
 }
 
@@ -35,7 +34,7 @@ class AppDelegate(NSObject):
             self.goNext()
 
     def initializeAppState(self):
-        self.state = AppState.INITIALIZING
+        self.state = AppState.READY
         self.failure = None
         self.needs_reload = True
         self.volumes = []
@@ -60,11 +59,7 @@ class AppDelegate(NSObject):
         self.status_item = status_item
 
     def goNext(self):
-        if (
-            self.state == AppState.RELOADING
-            or self.state == AppState.MOUNTING
-            or self.state == AppState.FAILED
-        ):
+        if self.state != AppState.READY:
             pass
         elif self.needs_reload:
             self.needs_reload = False
@@ -131,7 +126,7 @@ class AppDelegate(NSObject):
                 self.handleReloadVolumeList_, volumes, True
             )
         except:
-            self.fail_("Failed to retrieve the list of NTFS volumes")
+            self.fail_("Failed to retrieve NTFS volumes")
 
     def handleReloadVolumeList_(self, volumes):
         self.state = AppState.READY
@@ -147,9 +142,7 @@ class AppDelegate(NSObject):
         menu = self.status_item.menu()
         menu.removeAllItems()
 
-        if self.state == AppState.INITIALIZING:
-            self.addTextItem_withLabel_(menu, "Initializing...")
-        elif self.state == AppState.FAILED:
+        if self.state == AppState.FAILED:
             self.addTextItem_withLabel_(menu, self.failure)
         else:
             if self.last_mount_failed is not None:
