@@ -189,15 +189,15 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def goMountVolume_(self, volume):
-        if volume.access is ezntfs.Access.WRITABLE:
-            return self.goNext()
-
         self.state = AppState.MOUNTING
         self.mounting = volume
         self.performSelectorInBackground_withObject_(self.doMountVolume_, volume)
 
     def doMountVolume_(self, volume):
         try:
+            if volume.access is ezntfs.Access.WRITABLE:
+                return self.runOnMainThread_with_(self.handleMountVolumeOk_, volume)
+
             if volume.mounted:
                 ok = ezntfs.macos_unmount(volume)
                 if not ok:
