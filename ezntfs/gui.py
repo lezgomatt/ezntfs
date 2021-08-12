@@ -4,6 +4,7 @@ from PyObjCTools import AppHelper
 
 from collections import deque
 from enum import Enum
+import os
 import subprocess
 
 from . import ezntfs
@@ -14,6 +15,8 @@ BUSY_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externa
 ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.xmark", "ezNTFS (error)")
 
 AppState = Enum("AppState", ["READY", "FAILED", "RELOADING", "MOUNTING"])
+
+always_show_flag = os.environ.get('EZNTFS_ALWAYS_SHOW') == "yes"
 
 status_icons = {
     AppState.READY: DEFAULT_ICON,
@@ -152,8 +155,7 @@ class AppDelegate(NSObject):
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        self.status_item.setVisible_(True)
-        # self.status_item.setVisible_(len(self.volumes) > 0)
+        self.status_item.setVisible_(always_show_flag or len(self.volumes) > 0)
 
     def addTextItem_withLabel_(self, menu, label):
         item = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
