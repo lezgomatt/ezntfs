@@ -33,6 +33,11 @@ class AppDelegate(NSObject):
             self.observeMountChanges()
             self.goNext()
 
+    def runOnMainThread_with_(self, method, payload):
+        self.performSelectorOnMainThread_withObject_waitUntilDone_(
+            method, payload, False
+        )
+
     def initializeAppState(self):
         self.state = AppState.READY
         self.failure = None
@@ -57,28 +62,6 @@ class AppDelegate(NSObject):
         status_item.setMenu_(menu)
 
         self.status_item = status_item
-
-    def goNext(self):
-        if self.state != AppState.READY:
-            pass
-        elif self.needs_reload:
-            self.needs_reload = False
-            self.reloadVolumeList()
-        elif len(self.mount_queue) > 0:
-            volume = self.mount_queue.popleft()
-            self.mountVolume_(volume)
-
-        self.refreshUi()
-
-    def fail_(self, message):
-        self.performSelectorOnMainThread_withObject_waitUntilDone_(
-            self.handleFail_, message, True
-        )
-
-    def handleFail_(self, message):
-        self.state = AppState.FAILED
-        self.failure = message
-        self.goNext()
 
     def detectEnvironment(self):
         try:
@@ -115,16 +98,34 @@ class AppDelegate(NSObject):
         self.needs_reload = True
         self.goNext()
 
-    def reloadVolumeList(self):
+    def goNext(self):
+        if self.state != AppState.READY:
+            pass
+        elif self.needs_reload:
+            self.needs_reload = False
+            self.goReloadVolumeList()
+        elif len(self.mount_queue) > 0:
+            volume = self.mount_queue.popleft()
+            self.goMountVolume_(volume)
+
+        self.refreshUi()
+
+    def fail_(self, message):
+        self.runOnMainThread_with_(self.handleFail_, message)
+
+    def handleFail_(self, message):
+        self.state = AppState.FAILED
+        self.failure = message
+        self.goNext()
+
+    def goReloadVolumeList(self):
         self.state = AppState.RELOADING
         self.performSelectorInBackground_withObject_(self.doReloadVolumeList_, None)
 
     def doReloadVolumeList_(self, nothing):
         try:
             volumes = ezntfs.get_all_ntfs_volumes().values()
-            self.performSelectorOnMainThread_withObject_waitUntilDone_(
-                self.handleReloadVolumeList_, volumes, True
-            )
+            self.runOnMainThread_with_(self.handleReloadVolumeList_, volumes)
         except:
             self.fail_("Failed to retrieve NTFS volumes")
 
@@ -132,12 +133,6 @@ class AppDelegate(NSObject):
         self.state = AppState.READY
         self.volumes = [v for v in volumes if v.mounted or v.internal or self.isMountingVolume_(v)]
         self.goNext()
-
-    def isMountingVolume_(self, volume):
-        return (
-            self.mounting is not None and self.mounting.id == volume.id
-            or volume.id in (v.id for v in self.mount_queue)
-        )
 
     def refreshUi(self):
         self.status_item.button().setImage_(status_icons[self.state])
@@ -182,12 +177,18 @@ class AppDelegate(NSObject):
             else:
                 item.setToolTip_("Click to mount with ntfs-3g")
 
+    def isMountingVolume_(self, volume):
+        return (
+            self.mounting is not None and self.mounting.id == volume.id
+            or volume.id in (v.id for v in self.mount_queue)
+        )
+
     def handleVolumeClicked_(self, menu_item):
         volume = menu_item.representedObject()
         self.mount_queue.append(volume)
         self.goNext()
 
-    def mountVolume_(self, volume):
+    def goMountVolume_(self, volume):
         if volume.access is ezntfs.Access.WRITABLE:
             return self.goNext()
 
@@ -200,30 +201,23 @@ class AppDelegate(NSObject):
             if volume.mounted:
                 ok = ezntfs.macos_unmount(volume)
                 if not ok:
-                    return self.failedToMount_(volume)
+                    return self.runOnMainThread_with_(self.handleMountVolumeFail_, volume)
 
             ok = ezntfs.mount(volume, version=self.env.ntfs_3g, path=volume.mount_path)
             if not ok:
                 if volume.mounted:
                     ezntfs.macos_mount(volume)
-                return self.failedToMount_(volume)
+                return self.runOnMainThread_with_(self.handleMountVolumeFail_, volume)
 
-            self.performSelectorOnMainThread_withObject_waitUntilDone_(
-                self.handleMountVolumeOk_, volume, True
-            )
+            self.runOnMainThread_with_(self.handleMountVolumeOk_, volume)
         except:
-            self.failedToMount_(volume)
+            self.runOnMainThread_with_(self.handleMountVolumeFail_, volume)
 
     def handleMountVolumeOk_(self, volume):
         self.state = AppState.READY
         self.mounting = None
         self.last_mount_failed = None
         self.goNext()
-
-    def failedToMount_(self, volume):
-        self.performSelectorOnMainThread_withObject_waitUntilDone_(
-            self.handleMountVolumeFail_, volume, True
-        )
 
     def handleMountVolumeFail_(self, volume):
         self.state = AppState.READY
