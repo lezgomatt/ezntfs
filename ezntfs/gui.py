@@ -29,7 +29,7 @@ class AppDelegate(NSObject):
 
         self.env = self.detectEnvironment()
 
-        if not self.state == AppState.FAILED:
+        if not self.state is AppState.FAILED:
             self.observeMountChanges()
             self.goNext()
 
@@ -99,7 +99,7 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def goNext(self):
-        if self.state != AppState.READY:
+        if self.state is not AppState.READY:
             pass
         elif self.needs_reload:
             self.needs_reload = False
@@ -140,7 +140,7 @@ class AppDelegate(NSObject):
         menu = self.status_item.menu()
         menu.removeAllItems()
 
-        if self.state == AppState.FAILED:
+        if self.state is AppState.FAILED:
             self.addTextItem_withLabel_(menu, self.failure)
         else:
             if self.last_mount_failed is not None:
