@@ -135,7 +135,16 @@ class AppDelegate(NSObject):
     def handleReloadVolumeList_(self, volumes):
         self.state = AppState.READY
         self.volumes = [v for v in volumes if v.mounted or v.internal or self.isMountingVolume_(v)]
+        self.volumes.sort(key=lambda v: v.id)
         self.goNext()
+
+    def addVolume_(self, volume):
+        self.removeVolume_(volume)
+        self.volumes.append(volume)
+        self.volumes.sort(key=lambda v: v.id)
+
+    def removeVolume_(self, volume):
+        self.volumes = [v for v in self.volumes if v.id != volume.id]
 
     def refreshUi(self):
         self.status_item.button().setImage_(status_icons[self.state])
@@ -217,12 +226,14 @@ class AppDelegate(NSObject):
 
     def handleMountVolumeOk_(self, volume):
         self.state = AppState.READY
+        self.addVolume_(volume._replace(access=ezntfs.Access.WRITABLE))
         self.mounting = None
         self.last_mount_failed = None
         self.goNext()
 
     def handleMountVolumeFail_(self, volume):
         self.state = AppState.READY
+        self.needs_reload = True
         self.mounting = None
         self.last_mount_failed = volume
         self.goNext()
