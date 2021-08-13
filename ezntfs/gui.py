@@ -178,7 +178,7 @@ class AppDelegate(NSObject):
             label = f"{volume.name} [{volume.size}]"
             item = menu.addItemWithTitle_action_keyEquivalent_(label, "handleVolumeClicked:", "")
             item.setRepresentedObject_(volume)
-            if self.isMountingVolume_(volume):
+            if self.isMountingVolume_(volume) or willMountVolume_(volume):
                 item.setEnabled_(False)
                 item.setToolTip_("Mounting...")
             elif volume.access is ezntfs.Access.WRITABLE:
@@ -189,10 +189,10 @@ class AppDelegate(NSObject):
                 item.setToolTip_("Click to mount with ntfs-3g")
 
     def isMountingVolume_(self, volume):
-        return (
-            self.mounting is not None and self.mounting.id == volume.id
-            or volume.id in (v.id for v in self.mount_queue)
-        )
+        return self.mounting is not None and self.mounting.id == volume.id
+
+    def willMountVolume_(self, volume):
+        return volume.id in (v.id for v in self.mount_queue)
 
     def handleVolumeClicked_(self, menu_item):
         volume = menu_item.representedObject()
