@@ -94,11 +94,32 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def handleVolumeDidUnmount_(self, notification):
-        self.needs_reload = True
+        url = notification.userInfo()[NSWorkspaceVolumeURLKey]
+        volume = self.findVolumeWithUrl_(url)
+
+        if self.state is AppState.READY:
+            if volume is not None:
+                self.removeVolume_(volume)
+        elif volume is not None and self.isMountingVolume_(volume):
+            pass
+        else:
+            self.needs_reload = True
+
         self.goNext()
 
     def handleVolumeDidRename_(self, notification):
-        self.needs_reload = True
+        old_url = notification.userInfo()[NSWorkspaceVolumeOldURLKey]
+        old_volume = self.findVolumeWithUrl_(old_url)
+
+        if self.state is AppState.READY:
+            if old_volume is not None:
+                new_name = notificaiton.userInfo()[NSWorkspaceVolumeLocalizedNameKey]
+                new_path = notificaiton.userInfo()[NSWorkspaceVolumeURLKey].path()
+                new_volume = old_volume._replace(name=new_name, mount_path=new_path)
+                self.addVolume_(new_volume)
+        else:
+            self.needs_reload = True
+
         self.goNext()
 
     def goNext(self):
@@ -112,6 +133,11 @@ class AppDelegate(NSObject):
             self.goMountVolume_(volume)
 
         self.refreshUi()
+
+    def findVolumeWithUrl_(self, url):
+        path = url.path()
+
+        return next((v for v in self.volumes if v.mount_path == path), None)
 
     def fail_(self, message):
         self.runOnMainThread_with_(self.handleFail_, message)
