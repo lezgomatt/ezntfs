@@ -178,7 +178,7 @@ class AppDelegate(NSObject):
             label = f"{volume.name} [{volume.size}]"
             item = menu.addItemWithTitle_action_keyEquivalent_(label, "handleVolumeClicked:", "")
             item.setRepresentedObject_(volume)
-            if self.isMountingVolume_(volume) or willMountVolume_(volume):
+            if self.isMountingVolume_(volume) or self.willMountVolume_(volume):
                 item.setEnabled_(False)
                 item.setToolTip_("Mounting...")
             elif volume.access is ezntfs.Access.WRITABLE:
