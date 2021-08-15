@@ -56,13 +56,18 @@ def get_all_ntfs_volumes():
     # The types listed by `diskutil list` refer to the partition type not the file system.
     # "Windows_NTFS" is used for MBR partition tables and "Microsoft Basic Data" for GPT.
     # To determine the actual file system used, we use `diskutil info` later on.
+    # Simpler volumes might not have a partition type set, so we always check those too.
 
     list_out = run(["diskutil", "list"], capture_output=True)
+    lines = list_out.split("\n")
+
+    type_last_char_index = next(line for line in lines if re.match("\s*#:\s*TYPE", line)).index("E")
 
     disk_ids = [
         re.search(r"\S+$", line)[0]
-        for line in list_out.split("\n")
-        if re.match(r"^\s*\d+:\s*(Windows_NTFS|Microsoft Basic Data) ", line)
+        for line in lines
+        if re.match(r"\s*\d+:\s*(Windows_NTFS|Microsoft Basic Data) ", line)
+        or re.match(r"\s*0:\s*", line) and line[type_last_char_index] == " "
     ]
 
     return { vol.id: vol for vol in map(get_ntfs_volume, disk_ids) if vol is not None }
