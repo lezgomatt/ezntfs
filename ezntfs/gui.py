@@ -90,7 +90,12 @@ class AppDelegate(NSObject):
         notification_center.addObserver_selector_name_object_(self, "handleVolumeDidRename:", NSWorkspaceDidRenameVolumeNotification, None)
 
     def handleVolumeDidMount_(self, notification):
-        self.needs_reload = True
+        if self.state is AppState.READY:
+            path = notification.userInfo()[NSWorkspaceVolumeURLKey].path()
+            self.needs_reload = path
+        else:
+            self.needs_reload = True
+
         self.goNext()
 
     def handleVolumeDidUnmount_(self, notification):
@@ -126,8 +131,12 @@ class AppDelegate(NSObject):
         if self.state is not AppState.READY:
             pass
         elif self.needs_reload:
+            if isinstance(self.needs_reload, str):
+                self.goAddVolume_(self.needs_reload)
+            else:
+                self.goReloadVolumeList()
+
             self.needs_reload = False
-            self.goReloadVolumeList()
         elif len(self.mount_queue) > 0:
             volume = self.mount_queue.popleft()
             self.goMountVolume_(volume)
@@ -162,6 +171,25 @@ class AppDelegate(NSObject):
         self.state = AppState.READY
         self.volumes = [v for v in volumes if v.mounted or v.internal or self.isMountingVolume_(v)]
         self.volumes.sort(key=lambda v: v.id)
+        self.goNext()
+
+    def goAddVolume_(self, volumeIdOrPath):
+        self.state = AppState.RELOADING
+        self.performSelectorInBackground_withObject_(self.doAddVolume_, volumeIdOrPath)
+
+    def doAddVolume_(self, volumeIdOrPath):
+        try:
+            volume = ezntfs.get_ntfs_volume(volumeIdOrPath)
+            self.runOnMainThread_with_(self.handleAddVolume_, volume)
+        except:
+            self.fail_("Failed to retrieve NTFS volumes")
+
+    def handleAddVolume_(self, volume):
+        self.state = AppState.READY
+
+        if volume is not None:
+            self.addVolume_(volume)
+
         self.goNext()
 
     def addVolume_(self, volume):
