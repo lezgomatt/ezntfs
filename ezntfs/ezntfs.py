@@ -68,8 +68,8 @@ def get_all_ntfs_volumes():
     return { vol.id: vol for vol in map(get_ntfs_volume, disk_ids) if vol is not None }
 
 
-def get_ntfs_volume(id):
-    info_out = run(["diskutil", "info", id], capture_output=True)
+def get_ntfs_volume(idOrPath):
+    info_out = run(["diskutil", "info", idOrPath], capture_output=True)
 
     info = {
         line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
@@ -85,7 +85,7 @@ def get_ntfs_volume(id):
         return None
 
     # Older versions of diskutil used the label "Read-Only Volume"
-    ro_value = (info.get("Volume Read-Only") or info.get("Read-Only Volume"))
+    ro_value = info.get("Volume Read-Only") or info.get("Read-Only Volume")
     # Remove trailing notes enclosed in parentheses, examples:
     # - "Yes (read-only mount flag set)" => "Yes"
     # - "Not applicable (not mounted)" => "Not applicable"
@@ -98,7 +98,7 @@ def get_ntfs_volume(id):
     )
 
     return Volume(
-        id=id,
+        id=info["Device Identifier"],
         node=info["Device Node"],
         name=info["Volume Name"] if info["Volume Name"] != "" else "Untitled",
         mounted=info["Mounted"] == "Yes",
