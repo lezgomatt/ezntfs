@@ -2,7 +2,7 @@ import os
 import sys
 
 from . import ezntfs
-
+from . import __version__
 
 usage = f"""Usage: ezntfs <command>
 
@@ -10,6 +10,8 @@ Commands:
   list         List all NTFS volumes available for mounting
   all          Mount all NTFS volumes via ntfs-3g
   <disk id>    Mount a specific NTFS volume via ntfs-3g
+
+Version: {__version__}
 """
 
 

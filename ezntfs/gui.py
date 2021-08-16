@@ -8,6 +8,7 @@ import os
 import subprocess
 
 from . import ezntfs
+from . import __version__
 
 
 DEFAULT_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS")
@@ -58,7 +59,7 @@ class AppDelegate(NSObject):
         button = status_item.button()
         button.setTitle_("ezNTFS")
         button.setImage_(DEFAULT_ICON)
-        button.setToolTip_("ezNTFS") # TODO: add version number
+        button.setToolTip_(f"ezNTFS {__version__}")
 
         menu = NSMenu.new()
         menu.setAutoenablesItems_(False)
