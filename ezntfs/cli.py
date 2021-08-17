@@ -17,7 +17,7 @@ Version: {__version__}
 
 def main():
     if len(sys.argv) < 2:
-        print(usage)
+        print(usage, end="")
         sys.exit(1)
 
     env = ezntfs.get_environment_info()
@@ -47,9 +47,9 @@ def main():
         ok = mount_volume(volumes[command], version=env.ntfs_3g)
         sys.exit(0 if ok else 1)
 
-    print(f"ezntfs: Invalid command or disk id.")
+    print("ezntfs: Invalid command or disk id.")
     print()
-    print(usage)
+    print(usage, end="")
     sys.exit(1)
 
 
@@ -89,7 +89,7 @@ def mount_volume(volume, version):
         if not ok:
             return False
 
-    print(f"Mounting via ntfs-3g...")
+    print("Mounting via ntfs-3g...")
     ok = ezntfs.mount(volume, version=version, path=volume.mount_path)
     if ok:
         print(f"Successfully mounted {volume.name}.")
