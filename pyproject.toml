@@ -25,4 +25,4 @@ classifiers=[
 ezntfs = "ezntfs.cli:main"
 
 [tool.flit.entrypoints."gui_scripts"]
-ezntfs-gui = "ezntfs.gui:main"
+ezntfs-app = "ezntfs.app:main"
