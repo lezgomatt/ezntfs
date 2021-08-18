@@ -5,7 +5,10 @@ from PyObjCTools import AppHelper
 from collections import deque
 from enum import Enum
 import os
+from pathlib import Path
+import shutil
 import subprocess
+import sys
 
 from . import ezntfs
 from . import __version__
@@ -295,9 +298,45 @@ class AppDelegate(NSObject):
 
 
 def main():
+    if len(sys.argv) <= 1:
+        return launch_app()
+
+    command = sys.argv[1]
+
+    if command == "install":
+        return install()
+
+    print(f"Unknown command: {command}")
+    sys.exit(1)
+
+def launch_app():
     app = NSApplication.sharedApplication()
     delegate = AppDelegate.new()
     app.setDelegate_(delegate)
     app.setActivationPolicy_(NSApplicationActivationPolicyProhibited)
 
     AppHelper.runEventLoop()
+
+def install():
+    if os.geteuid() != 0:
+        print("Need root to add ntfs-3g to sudoers, try again with sudo")
+        return
+
+    env = ezntfs.get_environment_info()
+
+    if env.fuse is None:
+        print("Failed to detect macFUSE")
+        return
+
+    if env.ntfs_3g is None:
+        print("Failed to detect ntfs-3g")
+        return
+
+    ntfs_3g_path = shutil.which("ntfs-3g")
+    app_path = shutil.which("ezntfs-app")
+    app_name = "com.lezgomatt.ezntfs"
+
+    with open(f"/private/etc/sudoers.d/{app_name}", "w") as sudoers_file:
+        sudoers_file.write(f"%staff\t\tALL = NOPASSWD: {ntfs_3g_path}")
+
+    print("Installed")
