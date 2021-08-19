@@ -357,7 +357,8 @@ def install():
     app_path = shutil.which("ezntfs-app")
     app_name = "com.lezgomatt.ezntfs"
 
-    with open(f"/private/etc/sudoers.d/{app_name}", "w") as sudoers_file:
+    sudoers_path = f"/private/etc/sudoers.d/{app_name.replace('.', '-')}"
+    with open(sudoers_path, "w") as sudoers_file:
         sudoers_file.write(f"%staff\t\tALL = NOPASSWD: {ntfs_3g_path}")
 
     print("Installed")
