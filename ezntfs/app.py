@@ -343,6 +343,8 @@ def install():
         print("Need root to add ntfs-3g to sudoers, try again with sudo")
         return
 
+    user_id = os.getenv("SUDO_UID", os.getuid())
+
     env = ezntfs.get_environment_info()
 
     if env.fuse is None:
@@ -360,5 +362,23 @@ def install():
     sudoers_path = f"/private/etc/sudoers.d/{app_name.replace('.', '-')}"
     with open(sudoers_path, "w") as sudoers_file:
         sudoers_file.write(f"%staff\t\tALL = NOPASSWD: {ntfs_3g_path}")
+
+    launchd_path = f"{Path.home()}/Library/LaunchAgents/{app_name}.plist"
+    with open(launchd_path, "w") as launchd_file:
+        launchd_file.write(f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>{app_name}</string>
+        <key>Program</key>
+        <string>{app_path}</string>
+        <key>RunAtLoad</key>
+        <true/>
+    </dict>
+</plist>""")
+
+    subprocess.run(["launchctl", "load", launchd_path], capture_output=True, check=True)
+    subprocess.run(["launchctl", "kickstart", "-k", f"gui/{user_id}/{app_name}"], capture_output=True, check=True)
 
     print("Installed")
