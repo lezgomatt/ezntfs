@@ -237,7 +237,7 @@ class AppDelegate(NSObject):
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        self.status_item.setVisible_(always_show_flag or len(self.volumes) > 0)
+        self.status_item.setVisible_(self.state is AppState.FAILED or always_show_flag or len(self.volumes) > 0)
 
     def addTextItem_withLabel_(self, menu, label):
         item = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
