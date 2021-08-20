@@ -340,10 +340,11 @@ def launch_app():
     AppHelper.runEventLoop()
 
 def install():
+    user = os.getenv("SUDO_USER")
     user_id = os.getenv("SUDO_UID")
     group_id = os.getenv("SUDO_GID")
 
-    if os.geteuid() != 0 or user_id is None or group_id is None:
+    if os.geteuid() != 0 or user is None or user_id is None or group_id is None:
         print("Need root to add ntfs-3g to sudoers, try again with sudo")
         return
 
@@ -391,7 +392,7 @@ def install():
     os.chmod(sudoers_config_path, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP)
     os.chown(launchd_config_path, int(user_id), int(group_id))
 
-    subprocess.run(["launchctl", "load", launchd_path], capture_output=True, check=True)
-    subprocess.run(["launchctl", "kickstart", "-k", f"gui/{user_id}/{app_name}"], capture_output=True, check=True)
+    subprocess.run(["su", "-", user, "-c", f"launchctl unload -F {launchd_config_path}"], capture_output=True)
+    subprocess.run(["su", "-", user, "-c", f"launchctl load -F {launchd_config_path}"], capture_output=True)
 
     print("Installed")
