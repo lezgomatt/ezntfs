@@ -21,7 +21,7 @@ ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("extern
 
 AppState = Enum("AppState", ["READY", "FAILED", "RELOADING", "MOUNTING"])
 
-always_show_flag = os.environ.get('EZNTFS_ALWAYS_SHOW') == "yes"
+ALWAYS_SHOW_FLAG = os.getenv('EZNTFS_ALWAYS_SHOW') == "yes"
 
 status_icons = {
     AppState.READY: DEFAULT_ICON,
@@ -238,7 +238,7 @@ class AppDelegate(NSObject):
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        self.status_item.setVisible_(self.state is AppState.FAILED or always_show_flag or len(self.volumes) > 0)
+        self.status_item.setVisible_(self.state is AppState.FAILED or ALWAYS_SHOW_FLAG or len(self.volumes) > 0)
 
     def addTextItem_withLabel_(self, menu, label):
         item = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
@@ -357,16 +357,19 @@ def install():
         print("Failed to detect ntfs-3g")
         return
 
-    app_path = shutil.which("ezntfs-app")
     app_name = "com.lezgomatt.ezntfs"
+    app_path = shutil.which("ezntfs-app")
+    if app_path is None:
+        print("Could not find ezntfs-app in the path")
+        return
 
-    sudoers_path = f"/private/etc/sudoers.d/{app_name.replace('.', '-')}"
-    with open(sudoers_path, "w") as sudoers_file:
-        sudoers_file.write(f"%staff\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}")
+    sudoers_config_path = f"/private/etc/sudoers.d/{app_name.replace('.', '-')}"
+    with open(sudoers_config_path, "w") as sudoers_config_file:
+        sudoers_config_file.write(f"%staff\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}")
 
-    launchd_path = f"{Path.home()}/Library/LaunchAgents/{app_name}.plist"
-    with open(launchd_path, "w") as launchd_file:
-        launchd_file.write(f"""<?xml version="1.0" encoding="UTF-8"?>
+    launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{app_name}.plist"
+    with open(launchd_config_path, "w") as launchd_config_file:
+        launchd_config_file.write(f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
     <dict>
@@ -384,9 +387,9 @@ def install():
     </dict>
 </plist>""")
 
-    os.chown(sudoers_path, 0, 0)
-    os.chmod(sudoers_path, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP)
-    os.chown(launchd_path, int(user_id), int(group_id))
+    os.chown(sudoers_config_path, 0, 0)
+    os.chmod(sudoers_config_path, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP)
+    os.chown(launchd_config_path, int(user_id), int(group_id))
 
     subprocess.run(["launchctl", "load", launchd_path], capture_output=True, check=True)
     subprocess.run(["launchctl", "kickstart", "-k", f"gui/{user_id}/{app_name}"], capture_output=True, check=True)

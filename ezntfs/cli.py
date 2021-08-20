@@ -4,7 +4,7 @@ import sys
 from . import ezntfs
 from . import __version__
 
-usage = f"""Usage: ezntfs <command>
+USAGE = f"""Usage: ezntfs <command>
 
 Commands:
   list         List all NTFS volumes available for mounting
@@ -17,7 +17,7 @@ Version: {__version__}
 
 def main():
     if len(sys.argv) < 2:
-        print(usage, end="")
+        print(USAGE, end="")
         sys.exit(1)
 
     env = ezntfs.get_environment_info()
@@ -49,7 +49,7 @@ def main():
 
     print("ezntfs: Invalid command or disk id.")
     print()
-    print(usage, end="")
+    print(USAGE, end="")
     sys.exit(1)
 
 
