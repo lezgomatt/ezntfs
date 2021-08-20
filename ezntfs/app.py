@@ -339,6 +339,24 @@ def launch_app():
 
     AppHelper.runEventLoop()
 
+LAUNCHD_CONFIG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>{app_name}</string>
+        <key>EnvironmentVariables</key>
+        <dict>
+            <key>NTFS_3G_PATH</key>
+            <string>{ntfs_3g_path}</string>
+        </dict>
+        <key>Program</key>
+        <string>{app_path}</string>
+        <key>RunAtLoad</key>
+        <true/>
+    </dict>
+</plist>"""
+
 def install():
     user = os.getenv("SUDO_USER")
     user_id = os.getenv("SUDO_UID")
@@ -370,23 +388,11 @@ def install():
 
     launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{app_name}.plist"
     with open(launchd_config_path, "w") as launchd_config_file:
-        launchd_config_file.write(f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-    <dict>
-        <key>Label</key>
-        <string>{app_name}</string>
-        <key>EnvironmentVariables</key>
-        <dict>
-            <key>NTFS_3G_PATH</key>
-            <string>{ezntfs.NTFS_3G_PATH}</string>
-        </dict>
-        <key>Program</key>
-        <string>{app_path}</string>
-        <key>RunAtLoad</key>
-        <true/>
-    </dict>
-</plist>""")
+        launchd_config_file.write(LAUNCHD_CONFIG_TEMPLATE.format(
+            app_name=app_name,
+            ntfs_3g_path=ezntfs.NTFS_3G_PATH,
+            app_path=app_path,
+        ))
 
     os.chown(sudoers_config_path, 0, 0)
     os.chmod(sudoers_config_path, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP)
