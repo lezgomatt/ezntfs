@@ -355,13 +355,12 @@ def install():
         print("Failed to detect ntfs-3g")
         return
 
-    ntfs_3g_path = shutil.which("ntfs-3g")
     app_path = shutil.which("ezntfs-app")
     app_name = "com.lezgomatt.ezntfs"
 
     sudoers_path = f"/private/etc/sudoers.d/{app_name.replace('.', '-')}"
     with open(sudoers_path, "w") as sudoers_file:
-        sudoers_file.write(f"%staff\t\tALL = NOPASSWD: {ntfs_3g_path}")
+        sudoers_file.write(f"%staff\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}")
 
     launchd_path = f"{Path.home()}/Library/LaunchAgents/{app_name}.plist"
     with open(launchd_path, "w") as launchd_file:
@@ -371,6 +370,11 @@ def install():
     <dict>
         <key>Label</key>
         <string>{app_name}</string>
+        <key>EnvironmentVariables</key>
+        <dict>
+            <key>NTFS_3G_PATH</key>
+            <string>{ezntfs.NTFS_3G_PATH}</string>
+        </dict>
         <key>Program</key>
         <string>{app_path}</string>
         <key>RunAtLoad</key>

@@ -10,6 +10,7 @@ EnvironmentInfo = namedtuple("EnvironmentInfo", ["fuse", "ntfs_3g", "can_mount"]
 Volume = namedtuple("Volume", ["id", "node", "name", "mounted", "mount_path", "size", "access", "internal"])
 Access = Enum("Access", ["READ_ONLY", "WRITABLE", "NOT_APPLICABLE", "UNKNOWN"])
 
+NTFS_3G_PATH = os.getenv("NTFS_3G_PATH", shutil.which("ntfs-3g"))
 
 def get_environment_info():
     fuse = (
@@ -20,7 +21,7 @@ def get_environment_info():
 
     ntfs_3g = get_ntfs_3g_version()
 
-    test_cmd = ["sudo", "--non-interactive", "ntfs-3g", "--version"]
+    test_cmd = ["sudo", "--non-interactive", NTFS_3G_PATH, "--version"]
     can_mount = (
         fuse is not None
         and ntfs_3g is not None
@@ -31,10 +32,10 @@ def get_environment_info():
 
 
 def get_ntfs_3g_version():
-    if shutil.which("ntfs-3g") is None:
+    if NTFS_3G_PATH is None:
         return None
 
-    result = subprocess.run(["ntfs-3g", "--version"], capture_output=True)
+    result = subprocess.run([NTFS_3G_PATH, "--version"], capture_output=True)
     if result.returncode != 0:
         return None
 
@@ -135,7 +136,7 @@ def build_mount_command(volume, *, version, user_id, group_id, path):
     xattr_option = "user_xattr" if version is not None and version >= (2017, 3, 23, 6) else "auto_xattr"
 
     return [
-        "ntfs-3g",
+        NTFS_3G_PATH,
         "-o", f"volname={volume.name}",
         "-o", "local",
         "-o", "allow_other",
