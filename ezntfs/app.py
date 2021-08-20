@@ -7,6 +7,7 @@ from enum import Enum
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 
@@ -339,11 +340,12 @@ def launch_app():
     AppHelper.runEventLoop()
 
 def install():
-    if os.geteuid() != 0:
+    user_id = os.getenv("SUDO_UID")
+    group_id = os.getenv("SUDO_GID")
+
+    if os.geteuid() != 0 or user_id is None or group_id is None:
         print("Need root to add ntfs-3g to sudoers, try again with sudo")
         return
-
-    user_id = os.getenv("SUDO_UID", os.getuid())
 
     env = ezntfs.get_environment_info()
 
@@ -381,6 +383,10 @@ def install():
         <true/>
     </dict>
 </plist>""")
+
+    os.chown(sudoers_path, 0, 0)
+    os.chmod(sudoers_path, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP)
+    os.chown(launchd_path, int(user_id), int(group_id))
 
     subprocess.run(["launchctl", "load", launchd_path], capture_output=True, check=True)
     subprocess.run(["launchctl", "kickstart", "-k", f"gui/{user_id}/{app_name}"], capture_output=True, check=True)
