@@ -7,7 +7,6 @@ from enum import Enum
 import os
 from pathlib import Path
 import shutil
-import stat
 import subprocess
 import sys
 
@@ -395,7 +394,7 @@ def install():
         ))
 
     os.chown(sudoers_config_path, 0, 0)
-    os.chmod(sudoers_config_path, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP)
+    os.chmod(sudoers_config_path, 0o640)
     os.chown(launchd_config_path, int(user_id), int(group_id))
 
     subprocess.run(["su", "-", user, "-c", f"launchctl unload -F {launchd_config_path}"], capture_output=True)
