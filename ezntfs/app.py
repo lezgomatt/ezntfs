@@ -3,6 +3,7 @@ from AppKit import *
 from PyObjCTools import AppHelper
 
 from collections import deque
+import contextlib
 from enum import Enum
 import os
 from pathlib import Path
@@ -326,6 +327,8 @@ def main():
 
     if command == "install":
         return install()
+    elif command == "uninstall":
+        return uninstall()
 
     print(f"Unknown command: {command}")
     sys.exit(1)
@@ -338,6 +341,7 @@ def launch_app():
 
     AppHelper.runEventLoop()
 
+APP_NAME = "com.lezgomatt.ezntfs"
 LAUNCHD_CONFIG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -362,7 +366,7 @@ def install():
     group_id = os.getenv("SUDO_GID")
 
     if os.geteuid() != 0 or user is None or user_id is None or group_id is None:
-        print("Need root to add ntfs-3g to sudoers, try again with sudo")
+        print("Need root to configure sudoers, try again with sudo")
         return
 
     env = ezntfs.get_environment_info()
@@ -375,20 +379,19 @@ def install():
         print("Failed to detect ntfs-3g")
         return
 
-    app_name = "com.lezgomatt.ezntfs"
     app_path = shutil.which("ezntfs-app")
     if app_path is None:
         print("Could not find ezntfs-app in the path")
         return
 
-    sudoers_config_path = f"/private/etc/sudoers.d/{app_name.replace('.', '-')}"
+    sudoers_config_path = f"/private/etc/sudoers.d/{APP_NAME.replace('.', '-')}"
     with open(sudoers_config_path, "w") as sudoers_config_file:
         sudoers_config_file.write(f"%staff\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}")
 
-    launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{app_name}.plist"
+    launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{APP_NAME}.plist"
     with open(launchd_config_path, "w") as launchd_config_file:
         launchd_config_file.write(LAUNCHD_CONFIG_TEMPLATE.format(
-            app_name=app_name,
+            app_name=APP_NAME,
             ntfs_3g_path=ezntfs.NTFS_3G_PATH,
             app_path=app_path,
         ))
@@ -400,4 +403,18 @@ def install():
     subprocess.run(["su", "-", user, "-c", f"launchctl unload -F {launchd_config_path}"], capture_output=True)
     subprocess.run(["su", "-", user, "-c", f"launchctl load -F {launchd_config_path}"], capture_output=True)
 
-    print("Installed")
+    print("Installation complete! Try plugging an NTFS drive in.")
+    print("NOTE: You may need to grant python access to removable volumes.")
+
+def uninstall():
+    if os.geteuid() != 0:
+        print("Need root to remove sudoers config, try again with sudo")
+        return
+
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(f"/private/etc/sudoers.d/{APP_NAME.replace('.', '-')}")
+
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(f"{Path.home()}/Library/LaunchAgents/{APP_NAME}.plist")
+
+    print("Uninstallation complete!")
