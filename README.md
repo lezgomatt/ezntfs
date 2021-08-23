@@ -24,7 +24,7 @@ It should be accessible from the terminal afterwards.
 
 To configure the menu bar app, run the command after installing ezNTFS:
 ```
-$ ezntfs-app install
+$ sudo ezntfs-app install
 ```
 This command adds `ntfs-3g` to a sudoers file,
 and automatically launches the app on start-up.
