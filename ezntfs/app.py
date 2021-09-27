@@ -39,6 +39,7 @@ status_icons = {
     AppState.MOUNTING: BUSY_ICON,
 }
 
+
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, sender):
         self.initializeAppState()
@@ -342,6 +343,7 @@ def main():
     print(f"Unknown command: {command}")
     sys.exit(1)
 
+
 def launch_app():
     app = NSApplication.sharedApplication()
     delegate = AppDelegate.new()
@@ -349,6 +351,7 @@ def launch_app():
     app.setActivationPolicy_(NSApplicationActivationPolicyProhibited)
 
     AppHelper.runEventLoop()
+
 
 APP_NAME = "com.lezgomatt.ezntfs"
 LAUNCHD_CONFIG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -368,6 +371,7 @@ LAUNCHD_CONFIG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
         <true/>
     </dict>
 </plist>"""
+
 
 def install():
     user = os.getenv("SUDO_USER")
@@ -414,6 +418,7 @@ def install():
 
     print("Installation complete! Try plugging an NTFS drive in.")
     print("NOTE: You may need to grant python access to removable volumes.")
+
 
 def uninstall():
     if os.geteuid() != 0:

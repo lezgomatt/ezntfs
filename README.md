@@ -9,7 +9,7 @@ ezNTFS can be used as a menu bar app, or via the CLI in the terminal.
 
 To use ezNTFS, you will need [Python 3](https://www.python.org),
 [FUSE for macOS (osxfuse)](https://osxfuse.github.io),
-and [NTFS-3G](https://www.tuxera.com/community/open-source-ntfs-3g/)
+and [NTFS-3G](https://github.com/tuxera/ntfs-3g)
 installed in your system.
 
 To install NTFS-3G, you may compile and install it yourself
@@ -74,14 +74,13 @@ $ sudo ezntfs <disk id>
 
 ## Compiling and installing NTFS-3G
 
-We recommend compiling and installing NTFS-3G yourself for the following reasons:
-- You can use the newest version (`2017.3.23AR.6`), which includes important bug fixes for macOS
-- It can be installed as root, which is important for security (since we're adding it to sudoers)
+We recommend compiling and installing NTFS-3G yourself for security.
+This allows installing it as root, which keeps things secure when added to sudoers.
 
 ### Instructions
 ```
 # Clone the git repo (you may want to clone a newer version if available)
-git clone --depth 1 --branch 2017.3.23AR.6 https://github.com/tuxera/ntfs-3g.git
+git clone --depth 1 --branch 2021.8.22 https://github.com/tuxera/ntfs-3g.git
 cd ntfs-3g
 
 # Install the dependencies needed for compilation
