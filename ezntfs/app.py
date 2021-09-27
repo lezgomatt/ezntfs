@@ -15,9 +15,18 @@ from . import ezntfs
 from . import __version__
 
 
-DEFAULT_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill", "ezNTFS")
-BUSY_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.minus", "ezNTFS (busy)")
-ERROR_ICON = NSImage.imageWithSystemSymbolName_accessibilityDescription_("externaldrive.fill.badge.xmark", "ezNTFS (error)")
+def create_icon(symbol, description, fallback_image):
+    # System symbols are only available on macOS 11.0+
+    return (
+        NSImage.imageWithSystemSymbolName_accessibilityDescription_(symbol, description)
+        if hasattr(NSImage, "imageWithSystemSymbolName_accessibilityDescription_")
+        else NSImage.imageNamed_(fallback_image)
+    )
+
+
+DEFAULT_ICON = create_icon("externaldrive.fill", "ezNTFS?", "NSNavEjectButton.normal")
+BUSY_ICON = create_icon("externaldrive.fill.badge.minus", "ezNTFS (busy)", "NSNavEjectButton.rollover")
+ERROR_ICON = create_icon("externaldrive.fill.badge.xmark", "ezNTFS (error)", "NSStopProgressFreestandingTemplate")
 
 AppState = Enum("AppState", ["READY", "FAILED", "RELOADING", "MOUNTING"])
 
