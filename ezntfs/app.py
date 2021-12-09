@@ -399,7 +399,7 @@ def install():
 
     sudoers_config_path = f"/private/etc/sudoers.d/{APP_NAME.replace('.', '-')}"
     with open(sudoers_config_path, "w") as sudoers_config_file:
-        sudoers_config_file.write(f"%#{group_id}\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}")
+        sudoers_config_file.write(f"%#{group_id}\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}\n")
 
     launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{APP_NAME}.plist"
     with open(launchd_config_path, "w") as launchd_config_file:
