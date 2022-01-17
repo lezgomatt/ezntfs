@@ -28,13 +28,14 @@ DEFAULT_ICON = create_icon("externaldrive.fill", "ezNTFS?", "NSNavEjectButton.no
 BUSY_ICON = create_icon("externaldrive.fill.badge.minus", "ezNTFS (busy)", "NSNavEjectButton.rollover")
 ERROR_ICON = create_icon("externaldrive.fill.badge.xmark", "ezNTFS (error)", "NSStopProgressFreestandingTemplate")
 
-AppState = Enum("AppState", ["READY", "FAILED", "RELOADING", "MOUNTING"])
+AppState = Enum("AppState", ["READY", "SOFT_FAIL", "HARD_FAIL", "RELOADING", "MOUNTING"])
 
 ALWAYS_SHOW_FLAG = os.getenv('EZNTFS_ALWAYS_SHOW') == "yes"
 
 status_icons = {
     AppState.READY: DEFAULT_ICON,
-    AppState.FAILED: ERROR_ICON,
+    AppState.SOFT_FAIL: ERROR_ICON,
+    AppState.HARD_FAIL: ERROR_ICON,
     AppState.RELOADING: BUSY_ICON,
     AppState.MOUNTING: BUSY_ICON,
 }
@@ -47,7 +48,7 @@ class AppDelegate(NSObject):
 
         self.env = self.detectEnvironment()
 
-        if not self.state is AppState.FAILED:
+        if self.state not in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             self.observeMountChanges()
             self.goNext()
 
@@ -105,7 +106,7 @@ class AppDelegate(NSObject):
         notification_center.addObserver_selector_name_object_(self, "handleVolumeDidRename:", NSWorkspaceDidRenameVolumeNotification, None)
 
     def handleVolumeDidMount_(self, notification):
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         if self.state is AppState.READY:
@@ -117,7 +118,7 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def handleVolumeDidUnmount_(self, notification):
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         url = notification.userInfo()[NSWorkspaceVolumeURLKey]
@@ -134,7 +135,7 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def handleVolumeDidRename_(self, notification):
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         old_url = notification.userInfo()[NSWorkspaceVolumeOldURLKey]
@@ -175,8 +176,8 @@ class AppDelegate(NSObject):
     def fail_(self, message):
         self.runOnMainThread_with_(self.handleFail_, message)
 
-    def handleFail_(self, message):
-        self.state = AppState.FAILED
+    def handleFail_(self, message, soft=False):
+        self.state = AppState.SOFT_FAIL if soft else AppState.HARD_FAIL
         self.failure = message
         self.goNext()
 
@@ -189,10 +190,10 @@ class AppDelegate(NSObject):
             volumes = ezntfs.get_all_ntfs_volumes().values()
             self.runOnMainThread_with_(self.handleReloadVolumeList_, volumes)
         except:
-            self.fail_("Failed to retrieve NTFS volumes")
+            self.fail_("Failed to retrieve NTFS volumes", True)
 
     def handleReloadVolumeList_(self, volumes):
-        if self.state == AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         self.state = AppState.READY
@@ -209,10 +210,10 @@ class AppDelegate(NSObject):
             volume = ezntfs.get_ntfs_volume(volumeIdOrPath)
             self.runOnMainThread_with_(self.handleAddVolume_, volume)
         except:
-            self.fail_("Failed to retrieve NTFS volumes")
+            self.fail_("Failed to retrieve NTFS volumes", True)
 
     def handleAddVolume_(self, volume):
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         self.state = AppState.READY
@@ -236,19 +237,31 @@ class AppDelegate(NSObject):
         menu = self.status_item.menu()
         menu.removeAllItems()
 
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             self.addTextItem_withLabel_(menu, self.failure)
         else:
             if self.last_mount_failed is not None:
                 self.addTextItem_withLabel_(menu, f"Failed to mount: {self.last_mount_failed.name}")
                 menu.addItem_(NSMenuItem.separatorItem())
 
-            self.addVolumeItems_(menu)
+            if self.state is AppState.RELOADING and len(self.volumes) == 0:
+                self.addTextItem_withLabel_(menu, "Reloading volumes...")
+            else:
+                self.addVolumeItems_(menu)
+
+        if self.state is not AppState.HARD_FAIL:
+            menu.addItem_(NSMenuItem.separatorItem())
+            menu.addItemWithTitle_action_keyEquivalent_("Reload volumes", "handleReloadClicked:", "")
 
         menu.addItem_(NSMenuItem.separatorItem())
         menu.addItemWithTitle_action_keyEquivalent_("Quit", "terminate:", "")
 
-        self.status_item.setVisible_(self.state is AppState.FAILED or ALWAYS_SHOW_FLAG or len(self.volumes) > 0)
+        self.status_item.setVisible_(
+            self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]
+            or self.state is AppState.RELOADING and len(self.volumes) == 0
+            or ALWAYS_SHOW_FLAG
+            or len(self.volumes) > 0
+        )
 
     def addTextItem_withLabel_(self, menu, label):
         item = menu.addItemWithTitle_action_keyEquivalent_(label, "", "")
@@ -271,6 +284,10 @@ class AppDelegate(NSObject):
                 item.setToolTip_("Volume is writable")
             else:
                 item.setToolTip_("Click to mount with ntfs-3g")
+
+    def handleReloadClicked_(self, menu_item):
+        self.initializeAppState()
+        self.goNext()
 
     def isMountingVolume_(self, volume):
         return self.mounting is not None and self.mounting.id == volume.id
@@ -309,7 +326,7 @@ class AppDelegate(NSObject):
             self.runOnMainThread_with_(self.handleMountVolumeFail_, volume)
 
     def handleMountVolumeOk_(self, volume):
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         self.state = AppState.READY
@@ -319,7 +336,7 @@ class AppDelegate(NSObject):
         self.goNext()
 
     def handleMountVolumeFail_(self, volume):
-        if self.state is AppState.FAILED:
+        if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
             return
 
         self.state = AppState.READY
