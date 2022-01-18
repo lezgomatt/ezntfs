@@ -5,6 +5,7 @@ from PyObjCTools import AppHelper
 from collections import deque
 import contextlib
 from enum import Enum
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -14,6 +15,7 @@ import sys
 from . import ezntfs
 from . import __version__
 
+logging.basicConfig(format="[%(asctime)s] %(message)s")
 
 def create_icon(symbol, description, fallback_image):
     # System symbols are only available on macOS 11.0+
@@ -94,8 +96,9 @@ class AppDelegate(NSObject):
                 self.handleFail_("Missing privileges to mount via ntfs-3g")
 
             return env
-        except:
+        except Exception as exc:
             self.handleFail_("Failed to detect the environment")
+            logging.exception(exc)
 
     def observeMountChanges(self):
         workspace = NSWorkspace.sharedWorkspace()
@@ -189,8 +192,9 @@ class AppDelegate(NSObject):
         try:
             volumes = ezntfs.get_all_ntfs_volumes().values()
             self.runOnMainThread_with_(self.handleReloadVolumeList_, volumes)
-        except:
+        except Exception as exc:
             self.fail_("Failed to retrieve NTFS volumes", True)
+            logging.exception(exc)
 
     def handleReloadVolumeList_(self, volumes):
         if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
@@ -209,8 +213,9 @@ class AppDelegate(NSObject):
         try:
             volume = ezntfs.get_ntfs_volume(volumeIdOrPath)
             self.runOnMainThread_with_(self.handleAddVolume_, volume)
-        except:
+        except Exception as exc:
             self.fail_("Failed to retrieve NTFS volumes", True)
+            logging.exception(exc)
 
     def handleAddVolume_(self, volume):
         if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
@@ -322,8 +327,9 @@ class AppDelegate(NSObject):
                 return self.runOnMainThread_with_(self.handleMountVolumeFail_, volume)
 
             self.runOnMainThread_with_(self.handleMountVolumeOk_, volume)
-        except:
+        except Exception as exc:
             self.runOnMainThread_with_(self.handleMountVolumeFail_, volume)
+            logging.exception(exc)
 
     def handleMountVolumeOk_(self, volume):
         if self.state in [AppState.SOFT_FAIL, AppState.HARD_FAIL]:
@@ -386,6 +392,8 @@ LAUNCHD_CONFIG_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
         <string>{app_path}</string>
         <key>RunAtLoad</key>
         <true/>
+        <key>StandardErrorPath</key>
+        <string>{error_log_path}</string>
     </dict>
 </plist>"""
 
@@ -418,12 +426,14 @@ def install():
     with open(sudoers_config_path, "w") as sudoers_config_file:
         sudoers_config_file.write(f"%#{group_id}\t\tALL = NOPASSWD: {ezntfs.NTFS_3G_PATH}\n")
 
+    error_log_path = f"{Path.home()}/Library/Logs/{APP_NAME}.log"
     launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{APP_NAME}.plist"
     with open(launchd_config_path, "w") as launchd_config_file:
         launchd_config_file.write(LAUNCHD_CONFIG_TEMPLATE.format(
             app_name=APP_NAME,
             ntfs_3g_path=ezntfs.NTFS_3G_PATH,
             app_path=app_path,
+            error_log_path=error_log_path,
         ))
 
     os.chown(sudoers_config_path, 0, 0)
