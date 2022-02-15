@@ -14,7 +14,9 @@ installed in your system.
 
 To install NTFS-3G, you may compile and install it yourself
 (recommended, see instructions at the end),
-or you may also [install it via brew](https://github.com/osxfuse/osxfuse/wiki/NTFS-3G#installation).
+or you may also install it
+[via nix](https://search.nixos.org/packages?channel=unstable&show=ntfs3g&from=0&size=50&sort=relevance&type=packages&query=ntfs3g)
+or [via brew](https://github.com/osxfuse/osxfuse/wiki/NTFS-3G#installation).
 
 To install ezNTFS, run:
 ```
