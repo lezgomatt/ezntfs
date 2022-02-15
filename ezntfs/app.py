@@ -429,6 +429,7 @@ def install():
 
     error_log_path = f"{Path.home()}/Library/Logs/{APP_NAME}.log"
     launchd_config_path = f"{Path.home()}/Library/LaunchAgents/{APP_NAME}.plist"
+    os.makedirs(f"{Path.home()}/Library/LaunchAgents", exist_ok=True)
     with open(launchd_config_path, "w") as launchd_config_file:
         launchd_config_file.write(LAUNCHD_CONFIG_TEMPLATE.format(
             app_name=APP_NAME,
