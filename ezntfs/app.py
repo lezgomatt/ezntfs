@@ -89,15 +89,15 @@ class AppDelegate(NSObject):
             env = ezntfs.get_environment_info()
 
             if env.fuse is None:
-                self.handleFail_("Failed to detect macFUSE")
+                self.handleFail_(("Failed to detect macFUSE", False))
             elif env.ntfs_3g is None:
-                self.handleFail_("Failed to detect ntfs-3g")
+                self.handleFail_(("Failed to detect ntfs-3g", False))
             elif not env.can_mount:
-                self.handleFail_("Missing privileges to mount via ntfs-3g")
+                self.handleFail_(("Missing privileges to mount via ntfs-3g", False))
 
             return env
         except Exception as exc:
-            self.handleFail_("Failed to detect the environment")
+            self.handleFail_(("Failed to detect the environment", False))
             logging.exception(exc)
 
     def observeMountChanges(self):
@@ -176,11 +176,12 @@ class AppDelegate(NSObject):
 
         return next((v for v in self.volumes if v.mount_path == path), None)
 
-    def fail_(self, message):
-        self.runOnMainThread_with_(self.handleFail_, message)
+    def fail_(self, pair_message_recoverable):
+        self.runOnMainThread_with_(self.handleFail_, pair_message_recoverable)
 
-    def handleFail_(self, message, soft=False):
-        self.state = AppState.SOFT_FAIL if soft else AppState.HARD_FAIL
+    def handleFail_(self, pair_message_recoverable):
+        message, recoverable = pair_message_recoverable
+        self.state = AppState.SOFT_FAIL if recoverable else AppState.HARD_FAIL
         self.failure = message
         self.goNext()
 
@@ -193,7 +194,7 @@ class AppDelegate(NSObject):
             volumes = ezntfs.get_all_ntfs_volumes().values()
             self.runOnMainThread_with_(self.handleReloadVolumeList_, volumes)
         except Exception as exc:
-            self.fail_("Failed to retrieve NTFS volumes", True)
+            self.fail_(("Failed to retrieve NTFS volumes", True))
             logging.exception(exc)
 
     def handleReloadVolumeList_(self, volumes):
@@ -214,7 +215,7 @@ class AppDelegate(NSObject):
             volume = ezntfs.get_ntfs_volume(volumeIdOrPath)
             self.runOnMainThread_with_(self.handleAddVolume_, volume)
         except Exception as exc:
-            self.fail_("Failed to retrieve NTFS volumes", True)
+            self.fail_(("Failed to retrieve NTFS volumes", True))
             logging.exception(exc)
 
     def handleAddVolume_(self, volume):
