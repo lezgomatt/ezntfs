@@ -12,6 +12,7 @@ Access = Enum("Access", ["READ_ONLY", "WRITABLE", "NOT_APPLICABLE", "UNKNOWN"])
 
 NTFS_3G_PATH = os.getenv("NTFS_3G_PATH", shutil.which("ntfs-3g"))
 
+
 def get_environment_info():
     fuse = (
         "macfuse" if os.path.exists("/Library/Filesystems/macfuse.fs")

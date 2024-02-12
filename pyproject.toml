@@ -17,9 +17,7 @@ requires-python=">=3.6"
 dynamic = ["version", "description"]
 
 dependencies = [
-    # The newest version of pyobjc seems to break things.
-    # See: https://github.com/lezgomatt/ezntfs/issues/10
-    "pyobjc <9",
+    "pyobjc",
 ]
 
 [project.urls]

@@ -1,5 +1,21 @@
-from Foundation import *
-from AppKit import *
+from Foundation import NSObject
+from AppKit import (
+    NSApplication,
+    NSApplicationActivationPolicyProhibited,
+    NSControlStateValueOn,
+    NSImage,
+    NSMenu,
+    NSMenuItem,
+    NSStatusBar,
+    NSVariableStatusItemLength,
+    NSWorkspace,
+    NSWorkspaceDidMountNotification,
+    NSWorkspaceDidRenameVolumeNotification,
+    NSWorkspaceDidUnmountNotification,
+    NSWorkspaceVolumeLocalizedNameKey,
+    NSWorkspaceVolumeOldURLKey,
+    NSWorkspaceVolumeURLKey,
+)
 from PyObjCTools import AppHelper
 
 from collections import deque
@@ -146,8 +162,8 @@ class AppDelegate(NSObject):
 
         if self.state is AppState.READY:
             if old_volume is not None:
-                new_name = notificaiton.userInfo()[NSWorkspaceVolumeLocalizedNameKey]
-                new_path = notificaiton.userInfo()[NSWorkspaceVolumeURLKey].path()
+                new_name = notification.userInfo()[NSWorkspaceVolumeLocalizedNameKey]
+                new_path = notification.userInfo()[NSWorkspaceVolumeURLKey].path()
                 new_volume = old_volume._replace(name=new_name, mount_path=new_path)
                 self.addVolume_(new_volume)
         else:
